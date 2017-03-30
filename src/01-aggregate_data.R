@@ -65,6 +65,8 @@ meds_inpt <- read_data(dir_raw, "meds-inpt", FALSE) %>%
 
 hep_cont <- filter(meds_inpt, !is.na(event.tag))
 
+hep_bolus <- filter(meds_inpt, is.na(event.tag), route != "SUB-Q")
+
 hep_start <- hep_cont %>%
     group_by(millennium.id) %>%
     arrange(millennium.id, med.datetime) %>%
@@ -104,6 +106,8 @@ hep_drip <- calc_runtime(hep_cont_units_fixed) %>%
            start.datetime < hypothermia_start + days(2),
            stop.datetime > hypothermia_start)
 
+# check if there was a bolus given during each heparin infusion
+
 hep_drip_sum <- hep_drip %>%
     group_by(millennium.id) %>%
     arrange(millennium.id, start.datetime) %>%
@@ -128,6 +132,18 @@ temp_sum <- temp %>%
     summarize_data()
 
 temp_join <- select(temp_sum, millennium.id, temp.time.wt.avg = time.wt.avg)
+
+# group temp ranges
+# <= 93.2; 98.6
+
+temp_bin <- mutate(temp, vital = if_else(vital.result <= 93.2, "cold",
+                                         if_else(vital.result <= 98.6, "mild", "normal")))
+
+attr(temp_bin, "data") <- "mbo"
+temp_bin_sum <- temp_bin %>%
+    calc_runtime() %>%
+    summarize_data()
+
 
 # ptt <- read_data(dir_raw, "^labs") %>%
 ptt <- read_data(dir_raw, "mbo_labs", FALSE) %>%
