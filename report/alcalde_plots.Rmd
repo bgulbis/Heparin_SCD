@@ -1,0 +1,235 @@
+---
+title: "Untitled"
+author: "Brian Gulbis"
+date: "March 30, 2017"
+output:
+  html_document:
+    code_folding: hide
+    fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(themebg)
+library(plotly)
+library(broom)
+
+x <- dirr::get_rds("../data/final")
+# data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
+```
+
+# Univariate Comparisons
+
+```{r, fig.cap="Time-Weighted Average of Temperature vs. PTT"}
+d <- data_wt_avg %>%
+    filter(!is.na(temp.time.wt.avg),
+           !is.na(ptt.time.wt.avg))
+
+m <- lm(ptt.time.wt.avg ~ temp.time.wt.avg, data = d)
+
+plot_ly(d, x = ~temp.time.wt.avg) %>%
+    add_markers(y = ~ptt.time.wt.avg, split = ~group, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
+    add_ribbons(data = augment(m),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
+```
+
+```{r}
+mod <- lm(ptt.time.wt.avg ~ temp.time.wt.avg, data_wt_avg) 
+    
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for Time-Weighted Average PTT by Temperature")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for PTT by Temperature")
+```
+
+```{r, fig.cap="Temperature vs. PTT"}
+d <- temp_ptt %>%
+    filter(!is.na(temp),
+           !is.na(ptt),
+           temp > 85)
+
+m <- lm(ptt ~ temp, data = d)
+
+plot_ly(d, x = ~temp) %>%
+    add_markers(y = ~ptt, split = ~group, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
+    add_ribbons(data = augment(m),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
+```
+
+```{r}
+mod <- lm(ptt ~ temp, temp_ptt)
+
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for PTT by Temperature")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for PTT by Temperature")
+```
+
+```{r, fig.cap="Time-Weighted Average of Heparin Dose vs. PTT"}
+d <- data_wt_avg %>%
+    filter(!is.na(hep.time.wt.avg),
+           !is.na(ptt.time.wt.avg))
+
+m <- lm(ptt.time.wt.avg ~ hep.time.wt.avg, data = d)
+
+plot_ly(d, x = ~hep.time.wt.avg) %>%
+    add_markers(y = ~ptt.time.wt.avg, split = ~group, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
+    add_ribbons(data = augment(m),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
+```
+
+```{r}
+mod <- lm(ptt.time.wt.avg ~ hep.time.wt.avg, data_wt_avg) 
+    
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for Time-Weighted Average PTT by Heparin Dose")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for PTT by Heparin Dose")
+```
+
+```{r, fig.cap="Heparin Dose vs. PTT"}
+d <- temp_ptt %>%
+    filter(!is.na(ptt),
+           !is.na(hep),
+           temp > 85)
+
+# m <- loess(ptt ~ hep, data = d)
+m <- lm(ptt ~ hep, data = d)
+
+plot_ly(d, x = ~hep) %>%
+    add_markers(y = ~ptt, split = ~group, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
+    add_ribbons(data = augment(m),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
+```
+
+```{r}
+mod <- lm(ptt ~ hep, temp_ptt)
+
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for PTT by Heparin Dose")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for PTT by Heparin Dose")
+```
+
+```{r, fig.cap="Time-Weighted Average of Temperature vs. Heparin Dose"}
+d <- data_wt_avg %>%
+    filter(!is.na(hep.time.wt.avg),
+           !is.na(temp.time.wt.avg))
+
+m <- lm(hep.time.wt.avg ~ temp.time.wt.avg, data = d)
+
+plot_ly(d, x = ~temp.time.wt.avg) %>%
+    add_markers(y = ~hep.time.wt.avg, split = ~group, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
+    add_ribbons(data = augment(m),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
+```
+
+```{r}
+mod <- lm(hep.time.wt.avg ~ temp.time.wt.avg, data_wt_avg) 
+    
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for Time-Weighted Average Heparin Dose by Temperature")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for Heparin Dose by Temperature")
+```
+
+```{r, fig.cap="Temperature vs. Heparin Dose"}
+d <- temp_ptt %>%
+    filter(!is.na(temp),
+           !is.na(hep),
+           temp > 85)
+
+m <- lm(hep ~ temp, data = d)
+
+plot_ly(d, x = ~temp) %>%
+    add_markers(y = ~hep, split = ~group, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
+    add_ribbons(data = augment(m),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
+```
+
+```{r}
+mod <- lm(hep ~ temp, temp_ptt)
+
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for Heparin Dose by Temperature")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for Heparin Dose by Temperature")
+```
+
+# Multiple Variable Models
+
+```{r}
+mod <- lm(ptt.time.wt.avg ~ temp.time.wt.avg + hep.time.wt.avg, data_wt_avg) 
+    
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for Time-Weighted Average PTT by Temperature and Heparin Dose")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for PTT by Temperature and Heparin Dose")
+```
+
+```{r}
+mod <- lm(ptt ~ temp + hep, temp_ptt)
+
+mod %>%
+    glance() %>%
+    knitr::kable(caption = "Linear Regression Model for PTT by Temperature and Heparin Dose")
+
+mod %>%
+    tidy() %>%
+    knitr::kable(caption = "Coefficients for PTT by Temperature and Heparin Dose")
+```
