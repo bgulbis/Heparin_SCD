@@ -106,6 +106,8 @@ hep_drip <- calc_runtime(hep_cont_units_fixed) %>%
            start.datetime < hypothermia_start + days(2),
            stop.datetime > hypothermia_start)
 
+hep_run <- calc_runtime(hep_cont_units_fixed)
+
 # check if there was a bolus given during each heparin infusion
 
 hep_drip_sum <- hep_drip %>%
@@ -144,6 +146,7 @@ temp_bin_sum <- temp_bin %>%
     calc_runtime() %>%
     summarize_data()
 
+temp_hr <- mutate(temp, hour = floor_date(vital.datetime, "hours"))
 
 # ptt <- read_data(dir_raw, "^labs") %>%
 ptt <- read_data(dir_raw, "mbo_labs", FALSE) %>%
@@ -163,12 +166,65 @@ ptt_sum <- ptt %>%
 
 ptt_join <- select(ptt_sum, millennium.id, ptt.time.wt.avg = time.wt.avg)
 
-data_mbo <- patients %>%
+ptt_hr <- mutate(ptt, hour = floor_date(lab.datetime, "hours"))
+
+temp_ptt <- inner_join(temp_hr, ptt_hr, by = c("millennium.id", "hour", "group")) %>%
+    left_join(hep_run, by = "millennium.id") %>%
+    filter(hour >= rate.start,
+           hour <= rate.stop) %>%
+    select(millennium.id, hour, group, temp = vital.result, ptt = lab.result, hep = med.rate)
+
+# temp_ptt %>%
+#     filter(temp > 85) %>%
+#     ggplot(aes(x = temp, y = ptt, color = group)) +
+#     geom_point(shape = 1) +
+#     geom_smooth()
+
+temp_hep <- temp %>%
+    left_join(hep_run, by = "millennium.id") %>%
+    filter(vital.datetime >= rate.start,
+           vital.datetime <= rate.stop,
+           vital.result > 85)
+
+# ggplot(temp_hep, aes(x = vital.result, y = med.rate)) +
+#     geom_point(shape = 1) +
+#     geom_smooth()
+#
+ptt_hep <- ptt %>%
+    left_join(hep_run, by = "millennium.id") %>%
+    filter(lab.datetime >= rate.start,
+           lab.datetime <= rate.stop,
+           med.rate < 25)
+
+# ggplot(ptt_hep, aes(x = med.rate, y = lab.result)) +
+#     geom_point(shape = 1) +
+#     geom_smooth()
+#
+# mod <- lm(med.rate ~ vital.result, temp_hep)
+# summary(mod)
+#
+# mod_ptt <- lm(ptt ~ temp, temp_ptt)
+# summary(mod_ptt)
+# library(broom)
+#
+# mod_ptt %>%
+#     augment() %>%
+#     ggplot(aes(x = .fitted, y = .resid)) +
+#     geom_point(shape = 1) +
+#     geom_smooth(se = FALSE)
+#
+# par(mfrow = c(2,2))
+# plot(mod_ptt)
+
+data_wt_avg <- patients %>%
     left_join(hep_join, by = "millennium.id") %>%
     left_join(ptt_join, by = "millennium.id") %>%
     left_join(temp_join, by = "millennium.id")
 
-write_rds(data_mbo, "data/final/data_wt_avg.rds", "gz")
+write_rds(data_wt_avg, "data/final/data_wt_avg.Rds", "gz")
+write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
+write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
+write_rds(temp_ptt, "data/final/temp_ptt.Rds", "gz")
 
 # chelsea's data ---------------------------------------
 
