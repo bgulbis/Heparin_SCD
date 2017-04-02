@@ -106,9 +106,18 @@ hep_drip <- calc_runtime(hep_cont_units_fixed) %>%
            start.datetime < hypothermia_start + days(2),
            stop.datetime > hypothermia_start)
 
-hep_run <- calc_runtime(hep_cont_units_fixed)
+hep_run <- calc_runtime(hep_cont_units_fixed) %>%
+    left_join(hypothermia_start[c("millennium.id", "hypothermia_start")], by = "millennium.id") %>%
+    mutate(duration_hypothermia = as.numeric(difftime(rate.start, hypothermia_start, units = "hours")))
 
-# check if there was a bolus given during each heparin infusion
+# check if there was a bolus given near hypothermia initiation
+hep_bolus_initiation <- hep_bolus %>%
+    left_join(hep_start, by = "millennium.id") %>%
+    left_join(hypothermia_start, by = "millennium.id") %>%
+    filter(!is.na(hypothermia_start)) %>%
+    mutate(time_heparin = as.numeric(difftime(med.datetime, heparin.start, units = "hours")),
+           time_hypothermia = as.numeric(difftime(med.datetime, hypothermia_start, units = "hours"))) %>%
+    filter(time_hypothermia >= -12, time_hypothermia <= 6)
 
 hep_drip_sum <- hep_drip %>%
     group_by(millennium.id) %>%
@@ -152,10 +161,12 @@ temp_hr <- mutate(temp, hour = floor_date(vital.datetime, "hours"))
 ptt <- read_data(dir_raw, "mbo_labs", FALSE) %>%
     as.labs() %>%
     tidy_data() %>%
+    left_join(hep_start, by = "millennium.id") %>%
     left_join(hypothermia_start, by = "millennium.id") %>%
     filter(lab == "ptt",
-           lab.datetime >= hypothermia_start - hours(12),
-           lab.datetime <= hypothermia_start + days(2)) %>%
+           # lab.datetime >= hypothermia_start - hours(12),
+           # lab.datetime <= hypothermia_start + days(2),
+           !is.na(hypothermia_start)) %>%
     mutate(lab.result = if_else(is.na(lab.result) & censor.high, 201, lab.result)) %>%
     filter(!is.na(lab.result))
 
@@ -163,6 +174,10 @@ attr(ptt, "data") <- "mbo"
 ptt_sum <- ptt %>%
     calc_runtime() %>%
     summarize_data()
+
+ptt_run <- calc_runtime(ptt) %>%
+    mutate(duration_heparin = as.numeric(difftime(lab.datetime, heparin.start, units = "hours")),
+           duration_hypothermia = as.numeric(difftime(lab.datetime, hypothermia_start, units = "hours")))
 
 ptt_join <- select(ptt_sum, millennium.id, ptt.time.wt.avg = time.wt.avg)
 
@@ -228,39 +243,55 @@ write_rds(temp_ptt, "data/final/temp_ptt.Rds", "gz")
 
 # chelsea's data ---------------------------------------
 
-# df <- read_excel("data/raw/onesheet.xls") %>%
-#     dmap_at("Patient", as.integer) %>%
-#     dmap_at("Value", as.numeric) %>%
-#     filter(!is.na(Patient))
-#
-# pts <- read_excel("data/raw/Linking_Log.xls",
-#                   col_names = c("Patient", "FIN", "Control", "X1", "X2"),
-#                   skip = 1) %>%
-#     filter(!is.na(Patient)) %>%
-#     select(Patient, Control) %>%
-#     left_join(df, by = "Patient")
-#
-# hep_wt <- pts %>%
-#     filter(Event == "Heparin Dosing Weight (kg)") %>%
-#     arrange(Patient, Time) %>%
-#     distinct(Patient, .keep_all = TRUE) %>%
-#     select(Patient, hep_wt = Value)
-#
-# heparin <- pts %>%
-#     filter(Event == "heparin") %>%
-#     arrange(Patient, Time) %>%
-#     group_by(Patient, Control) %>%
-#     left_join(hep_wt, by = "Patient") %>%
-#     mutate(duration = difftime(Time, first(Time), units = "hours"),
-#            rate_wt_based = Value / hep_wt)
-#
-# study_only <- heparin %>%
-#     filter(Control == "Study",
-#            !is.na(hep_wt)) %>%
-#     summarize(auc = auc(duration, rate_wt_based),
-#               duration = last(duration)) %>%
-#     filter(!is.na(auc), duration > 0) %>%
-#     mutate(time_wt_avg_rate = auc / as.numeric(duration))
+df <- read_excel("data/raw/onesheet.xls") %>%
+    dmap_at("Patient", as.integer) %>%
+    dmap_at("Value", as.numeric) %>%
+    filter(!is.na(Patient)) %>%
+    dmap_at("Event", str_replace_all, pattern = "heprain", replacement = "heparin") %>%
+    dmap_at("Event", str_replace_all, pattern = "heparin_subQ", replacement = "heparin_subq") %>%
+    dmap_at("Event", str_replace_all, pattern = "Temperature.*", replacement = "Temperature")
+
+pts <- read_excel("data/raw/Linking_Log.xls",
+                  col_names = c("Patient", "FIN", "Control", "X1", "X2"),
+                  skip = 1) %>%
+    filter(!is.na(Patient)) %>%
+    select(Patient, Control) %>%
+    left_join(df, by = "Patient")
+
+hep_wt <- pts %>%
+    filter(Event == "Heparin Dosing Weight (kg)") %>%
+    arrange(Patient, Time) %>%
+    distinct(Patient, .keep_all = TRUE) %>%
+    select(Patient, hep_wt = Value)
+
+heparin <- pts %>%
+    filter(Event == "heparin") %>%
+    arrange(Patient, Time) %>%
+    group_by(Patient, Control) %>%
+    left_join(hep_wt, by = "Patient") %>%
+    mutate(duration = difftime(Time, first(Time), units = "hours"),
+           rate_wt_based = Value / hep_wt)
+
+study_only <- heparin %>%
+    filter(Control == "Study",
+           !is.na(hep_wt)) %>%
+    summarize(auc = auc(duration, rate_wt_based),
+              duration = last(duration)) %>%
+    filter(!is.na(auc), duration > 0) %>%
+    mutate(time_wt_avg_rate = auc / as.numeric(duration))
+
+df2 <- df %>%
+    filter(Event %in% c("heparin", "PTT", "Temperature")) %>%
+    group_by(Patient, Event, Time) %>%
+    summarize_at("Value", sum) %>%
+    group_by(Patient, Time) %>%
+    spread(Event, Value)
+
+df %>%
+    filter(Event == "PTT") %>%
+    count(Patient) %>%
+    summary()
+
 #
 # ggplot(study_only, aes(x = time_wt_avg_rate)) +
 #     geom_histogram(binwidth = 1) +
