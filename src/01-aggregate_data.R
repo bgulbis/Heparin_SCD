@@ -3,6 +3,7 @@ library(readxl)
 library(stringr)
 library(lubridate)
 library(edwr)
+library(MESS)
 
 dir_raw <- "data/raw"
 
@@ -44,11 +45,28 @@ mbo_id <- concat_encounters(id$millennium.id)
 
 hypothermia_start <- read_data(dir_raw, "mpp") %>%
     as.order_by() %>%
-    filter(action.type == "Order") %>%
+    filter(action.type == "Order",
+           str_detect(order, "Cardiac Arrest")) %>%
     arrange(pie.id, action.datetime) %>%
     group_by(pie.id) %>%
     distinct(.keep_all = TRUE) %>%
     select(pie.id, hypothermia_start = action.datetime) %>%
+    left_join(patients, by = "pie.id")
+
+heparin_mpp <- read_data(dir_raw, "mpp") %>%
+    as.order_by() %>%
+    filter(action.type == "Order",
+           !str_detect(order, "Cardiac Arrest")) %>%
+    mutate(xa = str_detect(order, regex("anti-xa", ignore_case = TRUE))) %>%
+    dmap_at("order", str_replace_all, pattern = ".*Stroke.*", replacement = "Stroke") %>%
+    dmap_at("order", str_replace_all, pattern = ".*Deep Vein.*", replacement = "DVT") %>%
+    dmap_at("order", str_replace_all, pattern = ".*ACS.*", replacement = "ACS") %>%
+    dmap_at("order", str_replace_all, pattern = ".*Acute Coronary.*", replacement = "ACS") %>%
+    dmap_at("order", str_replace_all, pattern = ".*Cardio.*", replacement = "Fixed") %>%
+    arrange(pie.id, action.datetime) %>%
+    group_by(pie.id, order) %>%
+    distinct(.keep_all = TRUE) %>%
+    # select(pie.id, hypothermia_start = action.datetime) %>%
     left_join(patients, by = "pie.id")
 
 weights_hep <- read_data(dir_raw, "weights") %>%
@@ -72,6 +90,13 @@ hep_start <- hep_cont %>%
     arrange(millennium.id, med.datetime) %>%
     distinct(.keep_all = TRUE) %>%
     select(millennium.id, heparin.start = med.datetime)
+
+hep_protocol <- hep_start %>%
+    left_join(heparin_mpp, by = "millennium.id") %>%
+    select(millennium.id, order, heparin.start, action.datetime) %>%
+    filter(action.datetime <= heparin.start + hours(1)) %>%
+    arrange(millennium.id, desc(action.datetime)) %>%
+    distinct(.keep_all = TRUE)
 
 weights_dosing <- weights_hep %>%
     left_join(hep_start, by = "millennium.id") %>%
@@ -102,12 +127,20 @@ attr(hep_cont_units_fixed, "data") <- "mbo"
 hep_drip <- calc_runtime(hep_cont_units_fixed) %>%
     summarize_data() %>%
     left_join(hypothermia_start, by = "millennium.id") %>%
+    left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
     filter(duration > 0,
            start.datetime < hypothermia_start + days(2),
            stop.datetime > hypothermia_start)
 
+# x <- hep_drip %>%
+#     filter(is.na(order)) %>%
+#     select(-order) %>%
+#     left_join(heparin_mpp[c("millennium.id", "order", "xa", "action.datetime")], by = "millennium.id") %>%
+#     select(millennium.id, order, start.datetime, action.datetime)
+
 hep_run <- calc_runtime(hep_cont_units_fixed) %>%
     left_join(hypothermia_start[c("millennium.id", "hypothermia_start")], by = "millennium.id") %>%
+    left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
     mutate(duration_hypothermia = as.numeric(difftime(rate.start, hypothermia_start, units = "hours")))
 
 # check if there was a bolus given near hypothermia initiation
