@@ -4,17 +4,16 @@ library(shiny)
 library(tidyverse)
 library(lazyeval)
 library(plotly)
+library(themebg)
 
-x <- dirr::get_rds("data/final")
-rm(x)
-
+data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
 
 hvi <- c("HH CVICU", "HH CVIMU", "HH HFIC", "HH HFIM", "HH 5HVI", "HH CCU", "HVI CIMU")
 # hvi <- "HH CVICU"
 
 times <- c("hep.time.wt.avg", "ptt.time.wt.avg", "temp.time.wt.avg")
 group_by <- c("group")
-plots <- c(Scatter = "scatter", Histogram = "histogram", `Box Plot` = "box")
+plots <- c(Scatter = "scatter", Trend = "trend", Histogram = "histogram", `Box Plot` = "box")
 cat_x <- c("group")
 
 ui <- fluidPage(
@@ -23,7 +22,7 @@ ui <- fluidPage(
     sidebarPanel(
         # sliderInput('sampleSize', 'Sample Size', min = 1, max = nrow(diamonds), value = 1000, step = 500, round = 0),
         selectInput("plot", "Plot Type", choices = plots, selected = "scatter"),
-        selectInput('x', 'X', choices = times, selected = "hep.time.wt.avg"),
+        selectInput('x', 'X', choices = times, selected = "temp.time.wt.avg"),
         selectInput('y', 'Y', choices = times, selected = "ptt.time.wt.avg"),
         sliderInput("bins", "Bins", min = 1, max = 50, value = 20),
         selectInput('color', 'Color', choices = c(None = ".", group_by)),
@@ -58,10 +57,14 @@ server <- function(input, output, session) {
     #add reactive data information. Dataset = built in diamonds data
     dataset <- reactive({
         if (input$filter != ".") {
-            dplyr::filter_(data_mbo, .dots = list(~location == input$filter))
+            df <- dplyr::filter_(data_wt_avg, .dots = list(~location == input$filter))
         } else {
-            data_mbo
+            df <- data_wt_avg
         }
+
+        # dplyr::filter_(df, .dots = list(~interp(!is.na(x), x = as.name(input$x)),
+        #                                 ~interp(!is.na(y), y = as.name(input$y))))
+        df
     })
 
     # output$xaxis <- renderText(length(dataset()[[input$x]]))
@@ -104,15 +107,45 @@ server <- function(input, output, session) {
                         x = interp(~x, x = as.name(input$x)),
                         y = interp(~y, y = as.name(input$y))
             )
+        } else if (input$plot == "trend") {
+            p <- ggplot(dataset(), aes(x = input$x, y = input$y)) +
+                geom_point() +
+                geom_smooth() +
+                theme_bg()
+
+            ggplotly(p)
         } else {
+            # df <- dataset() %>% ungroup
             add_markers(p,
                         x = interp(~x, x = as.name(input$x)),
                         y = interp(~y, y = as.name(input$y)),
                         marker = list(symbol = "circle-open"))
+                # add_lines(x = interp(~x, x = as.name(input$x)),
+                          # y = interp(~fitted(loess(x ~ y)),
+                                     # x = as.name(input$x),
+                                     # y = as.name(input$y)))
+                          # y = ~fitted(loess(input$x ~ input$y)))
         }
             # layout(xaxis = list(range = c(-3, 48)),
                    # yaxis = list(range = c(-3, 48)))
 
+# trend line example
+        # m <- loess(mpg ~ disp, data = mtcars)
+        #
+        # p <- plot_ly(mtcars, x = ~disp, color = I("black")) %>%
+        #     add_markers(y = ~mpg, text = rownames(mtcars), showlegend = FALSE) %>%
+        #     add_lines(y = ~fitted(loess(mpg ~ disp)),
+        #               line = list(color = 'rgba(7, 164, 181, 1)'),
+        #               name = "Loess Smoother") %>%
+        #     add_ribbons(data = augment(m),
+        #                 ymin = ~.fitted - 1.96 * .se.fit,
+        #                 ymax = ~.fitted + 1.96 * .se.fit,
+        #                 line = list(color = 'rgba(7, 164, 181, 0.05)'),
+        #                 fillcolor = 'rgba(7, 164, 181, 0.2)',
+        #                 name = "Standard Error") %>%
+        #     layout(xaxis = list(title = 'Displacement (cu.in.)'),
+        #            yaxis = list(title = 'Miles/(US) gallon'),
+        #            legend = list(x = 0.80, y = 0.90))
 
         # build graph with ggplot syntax
         # p <- ggplot(dataset(), aes_string(x = input$x, y = input$y, color = input$color)) +
