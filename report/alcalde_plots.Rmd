@@ -24,19 +24,22 @@ x <- dirr::get_rds("../data/final")
 
 ```{r}
 hep_run %>%
-    filter(drip.count == 1) %>%
-    ggplot(aes(x = run.time, y = med.rate)) +
+    filter(drip.count == 1,
+           order %in% c("ACS", "DVT")) %>%
+    ggplot(aes(x = run.time, y = med.rate, color = order)) +
     geom_point(shape = 1) +
     # geom_line() +
     geom_smooth() +
     xlim(c(0, 48)) +
+    # facet_wrap(~ order, ncol = 1) +
     theme_bg()
 ```
 
 ```{r}
 hep_run %>%
-    filter(drip.count == 1) %>%
-    ggplot(aes(x = duration_hypothermia, y = med.rate)) +
+    filter(drip.count == 1,
+           order %in% c("ACS", "DVT")) %>%
+    ggplot(aes(x = duration_hypothermia, y = med.rate, color = order)) +
     geom_point(shape = 1) +
     # geom_line() +
     geom_smooth() +
@@ -51,8 +54,10 @@ bolus <- hep_bolus_initiation %>%
 
 ptt_run %>%
     left_join(bolus, by = "millennium.id") %>%
+    left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
     dmap_at("bolus", ~coalesce(.x, FALSE)) %>%
-    ggplot(aes(x = duration_heparin, y = lab.result, color = bolus)) +
+    filter(order %in% c("ACS", "DVT")) %>%
+    ggplot(aes(x = duration_heparin, y = lab.result, color = order)) +
     geom_point(shape = 1) +
     geom_smooth() +
     xlim(c(-12, 96)) +
@@ -74,6 +79,39 @@ ptt_run %>%
     # xlim(c(-12, 96)) +
     scale_x_continuous(breaks = seq(-24, 120, 12), limits = c(-12, 96)) +
     theme_bg()
+```
+
+```{r}
+df <- ptt_run %>%
+    left_join(bolus, by = "millennium.id") %>%
+    left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
+    dmap_at("bolus", ~coalesce(.x, FALSE)) %>%
+    filter(!is.na(duration_heparin)) 
+
+d_acs <- filter(df, order == "ACS")
+d_dvt <- filter(df, order == "DVT")
+
+m_acs <- loess(lab.result ~ duration_hypothermia, data = df, subset = order == "ACS")
+m_dvt <- loess(lab.result ~ duration_hypothermia, data = df, subset = order == "DVT")
+
+plot_ly(x = ~duration_hypothermia) %>%
+    # add_markers(y = ~lab.result, split = ~order, marker = list(symbol = "circle-open")) %>%
+    add_markers(y = ~lab.result, data = d_acs, marker = list(symbol = "circle-open")) %>%
+    add_markers(y = ~lab.result, data = d_dvt, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m_acs), data = d_acs) %>%
+    add_lines(y = ~fitted(m_dvt), data = d_dvt) %>%
+    add_ribbons(data = augment(m_acs),
+            ymin = ~.fitted - 1.96 * .se.fit,
+            ymax = ~.fitted + 1.96 * .se.fit,
+            line = list(color = 'rgba(7, 164, 181, 0.05)'),
+            fillcolor = 'rgba(7, 164, 181, 0.2)',
+            showlegend = FALSE) %>%
+    add_ribbons(data = augment(m_dvt),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
 ```
 
 ```{r}
