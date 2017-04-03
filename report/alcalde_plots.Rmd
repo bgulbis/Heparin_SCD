@@ -86,7 +86,10 @@ df <- ptt_run %>%
     left_join(bolus, by = "millennium.id") %>%
     left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
     dmap_at("bolus", ~coalesce(.x, FALSE)) %>%
-    filter(!is.na(duration_heparin)) 
+    filter(!is.na(duration_heparin),
+           duration_hypothermia > -24,
+           duration_hypothermia < 72,
+           order %in% c("ACS", "DVT")) 
 
 d_acs <- filter(df, order == "ACS")
 d_dvt <- filter(df, order == "DVT")
@@ -95,17 +98,17 @@ m_acs <- loess(lab.result ~ duration_hypothermia, data = df, subset = order == "
 m_dvt <- loess(lab.result ~ duration_hypothermia, data = df, subset = order == "DVT")
 
 plot_ly(x = ~duration_hypothermia) %>%
-    # add_markers(y = ~lab.result, split = ~order, marker = list(symbol = "circle-open")) %>%
-    add_markers(y = ~lab.result, data = d_acs, marker = list(symbol = "circle-open")) %>%
-    add_markers(y = ~lab.result, data = d_dvt, marker = list(symbol = "circle-open")) %>%
-    add_lines(y = ~fitted(m_acs), data = d_acs) %>%
-    add_lines(y = ~fitted(m_dvt), data = d_dvt) %>%
+    add_markers(y = ~lab.result, data = df, split = ~order, color = ~group, marker = list(symbol = "circle-open")) %>%
+    # add_markers(y = ~lab.result, data = d_acs, marker = list(symbol = "circle-open")) %>%
+    # add_markers(y = ~lab.result, data = d_dvt, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m_acs), data = d_acs, name = "ACS") %>%
+    add_lines(y = ~fitted(m_dvt), data = d_dvt, name = "DVT") %>%
     add_ribbons(data = augment(m_acs),
-            ymin = ~.fitted - 1.96 * .se.fit,
-            ymax = ~.fitted + 1.96 * .se.fit,
-            line = list(color = 'rgba(7, 164, 181, 0.05)'),
-            fillcolor = 'rgba(7, 164, 181, 0.2)',
-            showlegend = FALSE) %>%
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE) %>%
     add_ribbons(data = augment(m_dvt),
                 ymin = ~.fitted - 1.96 * .se.fit,
                 ymax = ~.fitted + 1.96 * .se.fit,
