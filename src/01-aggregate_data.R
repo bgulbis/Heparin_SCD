@@ -222,6 +222,13 @@ temp_ptt <- inner_join(temp_hr, ptt_hr, by = c("millennium.id", "hour", "group")
            hour <= rate.stop) %>%
     select(millennium.id, hour, group, temp = vital.result, ptt = lab.result, hep = med.rate)
 
+temp_ptt_full <- temp_hr %>%
+    full_join(ptt_hr, by = c("millennium.id", "hour", "group", "hypothermia_start", "study_id", "pie.id")) %>%
+    arrange(millennium.id, hour) %>%
+    group_by(millennium.id) %>%
+    fill(vital, vital.result, lab, lab.result)
+    # left_join(hep_run, by = "millennium.id")
+
 # temp_ptt %>%
 #     filter(temp > 85) %>%
 #     ggplot(aes(x = temp, y = ptt, color = group)) +
@@ -343,6 +350,9 @@ df %>%
     filter(Event == "PTT") %>%
     count(Patient) %>%
     summary()
+
+ck_data <- filter(pts, Event %in% c("heparin", "PTT", "Temperature")) %>%
+    spread(Event, Value)
 
 #
 # ggplot(study_only, aes(x = time_wt_avg_rate)) +
