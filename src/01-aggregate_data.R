@@ -274,6 +274,10 @@ write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
 write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
 write_rds(temp_ptt, "data/final/temp_ptt.Rds", "gz")
 
+temp_ptt %>%
+    select_if(is.numeric) %>%
+    cor()
+
 # chelsea's data ---------------------------------------
 
 df <- read_excel("data/raw/onesheet.xls") %>%
@@ -297,7 +301,7 @@ hep_wt <- pts %>%
     distinct(Patient, .keep_all = TRUE) %>%
     select(Patient, hep_wt = Value)
 
-heparin <- pts %>%
+ck_heparin <- pts %>%
     filter(Event == "heparin") %>%
     arrange(Patient, Time) %>%
     group_by(Patient, Control) %>%
@@ -305,7 +309,22 @@ heparin <- pts %>%
     mutate(duration = difftime(Time, first(Time), units = "hours"),
            rate_wt_based = Value / hep_wt)
 
-study_only <- heparin %>%
+ck_ptt <- pts %>%
+    filter(Event == "PTT") %>%
+    group_by(Patient) %>%
+    mutate(duration_ptt = difftime(Time, first(Time), units = "hours"))
+
+ck_temp <- pts %>%
+    filter(Event == "Temperature") %>%
+    group_by(Patient) %>%
+    mutate(duration_temp = difftime(Time, first(Time), units = "hours"))
+
+write_rds(ck_heparin, "data/final/ck_heparin.Rds")
+write_rds(ck_ptt, "data/final/ck_ptt.Rds")
+write_rds(ck_temp, "data/final/ck_temp.Rds")
+
+
+study_only <- ck_heparin %>%
     filter(Control == "Study",
            !is.na(hep_wt)) %>%
     summarize(auc = auc(duration, rate_wt_based),
