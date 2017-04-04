@@ -342,3 +342,15 @@ mod %>%
     tidy() %>%
     knitr::kable(caption = "Coefficients for PTT by Temperature and Heparin Dose")
 ```
+
+# Chelsea's Data
+
+```{r}
+plot_ly(ck_heparin, x = ~as.numeric(duration), y = ~Value, split = ~Control)
+```
+
+```{r}
+plot_ly(ck_ptt, x = ~duration_ptt, y = ~Value, split = ~Control) %>%
+    add_markers(marker = list(symbol = "circle-open"))
+```
+
