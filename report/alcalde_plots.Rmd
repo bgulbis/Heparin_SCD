@@ -21,6 +21,10 @@ library(broom)
 
 x <- dirr::get_rds("../data/final")
 # data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
+
+se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
+se_fill <- 'rgba(7, 164, 181, 0.2)'
+
 ```
 
 ```{r, eval=FALSE}
@@ -184,11 +188,6 @@ mod %>%
     knitr::kable(caption = "Coefficients for PTT by Temperature")
 ```
 
-```{r}
-se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
-se_fill <- 'rgba(7, 164, 181, 0.2)'
-```
-
 ```{r, fig.cap="Temperature vs. PTT"}
 d <- temp_ptt_full %>%
     filter(!is.na(vital.result),
@@ -199,8 +198,8 @@ d_study <- filter(d, group == "Study")
 d_contr <- filter(d, group == "Control")
 
 # m <- lm(lab.result ~ vital.result, data = d)
-m_study <- loess(lab.result ~ vital.result, data = d, subset = group == "Study")
-m_contr <- loess(lab.result ~ vital.result, data = d, subset = group == "Control")
+m_study <- lm(lab.result ~ vital.result, data = d, subset = group == "Study")
+m_contr <- lm(lab.result ~ vital.result, data = d, subset = group == "Control")
 
 plot_ly(x = ~vital.result) %>%
     add_markers(data = d, 
@@ -450,11 +449,11 @@ mod %>%
 
 # Chelsea's Data
 
-```{r}
+```{r, eval=FALSE}
 plot_ly(ck_heparin, x = ~as.numeric(duration), y = ~Value, split = ~Control)
 ```
 
-```{r}
+```{r, eval=FALSE}
 plot_ly(ck_ptt, x = ~duration_ptt, y = ~Value, split = ~Control) %>%
     add_markers(marker = list(symbol = "circle-open"))
 ```
@@ -477,4 +476,35 @@ plot_ly(d, x = ~Temperature) %>%
                 line = list(color = 'rgba(7, 164, 181, 0.05)'),
                 fillcolor = 'rgba(7, 164, 181, 0.2)',
                 showlegend = FALSE)
+```
+
+```{r, fig.cap="Temperature vs. PTT"}
+d <- ck_data %>%
+    filter(!is.na(Temperature),
+           !is.na(PTT))
+
+d_study <- filter(d, Control == "Study")
+d_ctrl <- filter(d, Control == "Control")
+
+m_study <- lm(PTT ~ Temperature, data = d_study)
+m_ctrl <- lm(PTT ~ Temperature, data = d_ctrl)
+
+plot_ly(x = ~Temperature) %>%
+    add_markers(data = d, y = ~PTT, split = ~Control, marker = list(symbol = "circle-open")) %>%
+    add_lines(data = d_study, y = ~fitted(m_study), name = "Study", legendgroup = "study") %>%
+    add_lines(data = d_ctrl, y = ~fitted(m_ctrl), name = "Control", legendgroup = "control") %>%
+    add_ribbons(data = augment(m_study),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                legendgroup = "study",
+                showlegend = FALSE) %>%
+    add_ribbons(data = augment(m_ctrl),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                legendgroup = "control",
+                showlegend = FALSE) 
 ```
