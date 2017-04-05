@@ -227,7 +227,7 @@ temp_ptt_full <- temp_hr %>%
     arrange(millennium.id, hour) %>%
     group_by(millennium.id) %>%
     fill(vital, vital.result, lab, lab.result) %>%
-    left_join(hep_run[c("millennium.id", "med.rate", "rate.start", "rate.stop")], by = "millennium.id") %>%
+    left_join(hep_run[c("millennium.id", "med.rate", "rate.start", "rate.stop", "order")], by = "millennium.id") %>%
     filter(is.na(med.rate) | (hour >= rate.start & hour <= rate.stop))
 
 # temp_ptt %>%
@@ -278,9 +278,16 @@ data_wt_avg <- patients %>%
     left_join(temp_join, by = "millennium.id")
 
 write_rds(data_wt_avg, "data/final/data_wt_avg.Rds", "gz")
-# write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
-# write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
+write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
+write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
+write_rds(temp_ptt, "data/final/temp_ptt.Rds", "gz")
 write_rds(temp_ptt_full, "data/final/temp_ptt_full.Rds", "gz")
+write_rds(hep_run, "data/final/hep_run.Rds", "gz")
+write_rds(ptt_run, "data/final/ptt_run.Rds", "gz")
+write_rds(hep_bolus_initiation, "data/final/hep_bolus_initiation.Rds", "gz")
+write_rds(hep_protocol, "data/final/hep_protocol.Rds", "gz")
+write_rds(hep_drip, "data/final/hep_drip.Rds", "gz")
+
 
 temp_ptt %>%
     select_if(is.numeric) %>%
@@ -294,7 +301,8 @@ df <- read_excel("data/raw/onesheet.xls") %>%
     filter(!is.na(Patient)) %>%
     dmap_at("Event", str_replace_all, pattern = "heprain", replacement = "heparin") %>%
     dmap_at("Event", str_replace_all, pattern = "heparin_subQ", replacement = "heparin_subq") %>%
-    dmap_at("Event", str_replace_all, pattern = "Temperature.*", replacement = "Temperature")
+    dmap_at("Event", str_replace_all, pattern = "Temperature.*", replacement = "Temperature") %>%
+    mutate(Value = if_else(Event == "Temperature" & Value >= 88, (Value - 32) / 1.8, Value))
 
 pts <- read_excel("data/raw/Linking_Log.xls",
                   col_names = c("Patient", "FIN", "Control", "X1", "X2"),
@@ -327,11 +335,6 @@ ck_temp <- pts %>%
     group_by(Patient) %>%
     mutate(duration_temp = difftime(Time, first(Time), units = "hours"))
 
-write_rds(ck_heparin, "data/final/ck_heparin.Rds")
-write_rds(ck_ptt, "data/final/ck_ptt.Rds")
-write_rds(ck_temp, "data/final/ck_temp.Rds")
-
-
 study_only <- ck_heparin %>%
     filter(Control == "Study",
            !is.na(hep_wt)) %>%
@@ -340,20 +343,19 @@ study_only <- ck_heparin %>%
     filter(!is.na(auc), duration > 0) %>%
     mutate(time_wt_avg_rate = auc / as.numeric(duration))
 
-df2 <- df %>%
+ck_data <- pts %>%
     filter(Event %in% c("heparin", "PTT", "Temperature")) %>%
-    group_by(Patient, Event, Time) %>%
-    summarize_at("Value", sum) %>%
-    group_by(Patient, Time) %>%
-    spread(Event, Value)
+    group_by(Patient, Control, Event, Time) %>%
+    summarize_at("Value", mean) %>%
+    group_by(Patient, Control, Time) %>%
+    spread(Event, Value) %>%
+    group_by(Patient, Control) %>%
+    fill(heparin, PTT, Temperature)
 
-df %>%
-    filter(Event == "PTT") %>%
-    count(Patient) %>%
-    summary()
-
-ck_data <- filter(pts, Event %in% c("heparin", "PTT", "Temperature")) %>%
-    spread(Event, Value)
+write_rds(ck_heparin, "data/final/ck_heparin.Rds")
+write_rds(ck_ptt, "data/final/ck_ptt.Rds")
+write_rds(ck_temp, "data/final/ck_temp.Rds")
+write_rds(ck_data, "data/final/ck_data.Rds")
 
 #
 # ggplot(study_only, aes(x = time_wt_avg_rate)) +
@@ -361,7 +363,7 @@ ck_data <- filter(pts, Event %in% c("heparin", "PTT", "Temperature")) %>%
 #     theme_bg()
 #
 # # <= 34; >34 <= 37; > 37
-# temp_df <- df %>%
-#     filter(str_detect(Event, "Temp"))
+temp_df <- df %>%
+    filter(Event == "Temperature")
 #     mutate(stage = if_else(str_detect(Event, "Temp") & Value <= 34, "Cold",
 #                            if_else(str_detect(Event, "Temp") & Value > 34 & Value <= 37, "Moderate", "Normal")))
