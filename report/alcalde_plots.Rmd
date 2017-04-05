@@ -163,22 +163,50 @@ mod %>%
     knitr::kable(caption = "Coefficients for PTT by Temperature")
 ```
 
+```{r}
+se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
+se_fill <- 'rgba(7, 164, 181, 0.2)'
+```
+
 ```{r, fig.cap="Temperature vs. PTT"}
-d <- temp_ptt %>%
-    filter(!is.na(temp),
-           !is.na(ptt),
-           temp > 85)
+d <- temp_ptt_full %>%
+    filter(!is.na(vital.result),
+           !is.na(lab.result),
+           vital.result > 85)
 
-m <- lm(ptt ~ temp, data = d)
+d_study <- filter(d, group == "Study")
+d_contr <- filter(d, group == "Control")
 
-plot_ly(d, x = ~temp) %>%
-    add_markers(y = ~ptt, split = ~group, marker = list(symbol = "circle-open")) %>%
-    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
-    add_ribbons(data = augment(m),
+# m <- lm(lab.result ~ vital.result, data = d)
+m_study <- lm(lab.result ~ vital.result, data = d, subset = group == "Study")
+m_contr <- lm(lab.result ~ vital.result, data = d, subset = group == "Control")
+
+plot_ly(x = ~vital.result) %>%
+    add_markers(data = d, 
+                y = ~lab.result, 
+                split = ~group, 
+                marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m_study), 
+              data = d_study, 
+              legendgroup = "study", 
+              name = "Study") %>%
+    add_lines(y = ~fitted(m_contr), 
+              data = d_contr, 
+              legendgroup = "control", 
+              name = "Control") %>%
+    add_ribbons(data = augment(m_study),
                 ymin = ~.fitted - 1.96 * .se.fit,
                 ymax = ~.fitted + 1.96 * .se.fit,
-                line = list(color = 'rgba(7, 164, 181, 0.05)'),
-                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                line = se_line,
+                fillcolor = se_fill,
+                legendgroup = "study",
+                showlegend = FALSE) %>%
+    add_ribbons(data = augment(m_contr),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = se_line,
+                fillcolor = se_fill,
+                legendgroup = "control",
                 showlegend = FALSE)
 ```
 

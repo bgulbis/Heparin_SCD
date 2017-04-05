@@ -226,8 +226,9 @@ temp_ptt_full <- temp_hr %>%
     full_join(ptt_hr, by = c("millennium.id", "hour", "group", "hypothermia_start", "study_id", "pie.id")) %>%
     arrange(millennium.id, hour) %>%
     group_by(millennium.id) %>%
-    fill(vital, vital.result, lab, lab.result)
-    # left_join(hep_run, by = "millennium.id")
+    fill(vital, vital.result, lab, lab.result) %>%
+    left_join(hep_run[c("millennium.id", "med.rate", "rate.start", "rate.stop")], by = "millennium.id") %>%
+    filter(is.na(med.rate) | (hour >= rate.start & hour <= rate.stop))
 
 # temp_ptt %>%
 #     filter(temp > 85) %>%
@@ -277,9 +278,9 @@ data_wt_avg <- patients %>%
     left_join(temp_join, by = "millennium.id")
 
 write_rds(data_wt_avg, "data/final/data_wt_avg.Rds", "gz")
-write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
-write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
-write_rds(temp_ptt, "data/final/temp_ptt.Rds", "gz")
+# write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
+# write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
+write_rds(temp_ptt_full, "data/final/temp_ptt_full.Rds", "gz")
 
 temp_ptt %>%
     select_if(is.numeric) %>%
