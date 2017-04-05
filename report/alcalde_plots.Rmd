@@ -1,7 +1,7 @@
 ---
-title: "Untitled"
-author: "Brian Gulbis"
-date: "March 30, 2017"
+title: "Exploratory Data Analysis"
+author: "Chelsea Krueger, Jen Cortes, Brian Gulbis"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
   html_document:
     code_folding: hide
@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(lubridate)
 library(themebg)
 library(plotly)
 library(broom)
@@ -22,10 +23,10 @@ x <- dirr::get_rds("../data/final")
 # data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
 ```
 
-```{r}
+```{r, eval=FALSE}
 hep_run %>%
     filter(drip.count == 1,
-           order %in% c("ACS", "DVT")) %>%
+           order %in% c("ACS", "DVT", "Stroke")) %>%
     ggplot(aes(x = run.time, y = med.rate, color = order)) +
     geom_point(shape = 1) +
     # geom_line() +
@@ -35,10 +36,10 @@ hep_run %>%
     theme_bg()
 ```
 
-```{r}
+```{r, eval=FALSE}
 hep_run %>%
     filter(drip.count == 1,
-           order %in% c("ACS", "DVT")) %>%
+           order %in% c("ACS", "DVT", "Stroke")) %>%
     ggplot(aes(x = duration_hypothermia, y = med.rate, color = order)) +
     geom_point(shape = 1) +
     # geom_line() +
@@ -47,7 +48,7 @@ hep_run %>%
     theme_bg()
 ```
 
-```{r}
+```{r, eval=FALSE}
 bolus <- hep_bolus_initiation %>%
     distinct(millennium.id) %>%
     mutate(bolus = TRUE)
@@ -64,7 +65,7 @@ ptt_run %>%
     theme_bg()
 ```
 
-```{r}
+```{r, eval=FALSE}
 ptt_run %>%
     # mutate(on_heparin = lab.datetime >= heparin.start) %>%
     left_join(bolus, by = "millennium.id") %>%
@@ -81,7 +82,11 @@ ptt_run %>%
     theme_bg()
 ```
 
-```{r}
+```{r, fig.cap="PTT change over time from hypothermia initiation by heparin protocol"}
+bolus <- hep_bolus_initiation %>%
+    distinct(millennium.id) %>%
+    mutate(bolus = TRUE)
+
 df <- ptt_run %>%
     left_join(bolus, by = "millennium.id") %>%
     left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
@@ -89,35 +94,51 @@ df <- ptt_run %>%
     filter(!is.na(duration_heparin),
            duration_hypothermia > -24,
            duration_hypothermia < 72,
-           order %in% c("ACS", "DVT")) 
+           order %in% c("ACS", "DVT", "Stroke")) %>%
+    left_join(hep_drip[c("millennium.id", "start.datetime", "stop.datetime")], by = "millennium.id") %>%
+    filter(lab.datetime >= start.datetime - hours(4),
+           lab.datetime <= stop.datetime + hours(4))
 
 d_acs <- filter(df, order == "ACS")
 d_dvt <- filter(df, order == "DVT")
+d_cva <- filter(df, order == "Stroke")
 
 m_acs <- loess(lab.result ~ duration_hypothermia, data = df, subset = order == "ACS")
 m_dvt <- loess(lab.result ~ duration_hypothermia, data = df, subset = order == "DVT")
+m_cva <- loess(lab.result ~ duration_hypothermia, data = df, subset = order == "Stroke")
 
 plot_ly(x = ~duration_hypothermia) %>%
-    add_markers(y = ~lab.result, data = df, split = ~order, color = ~group, marker = list(symbol = "circle-open")) %>%
+    add_markers(y = ~lab.result, data = df, split = ~order, marker = list(symbol = "circle-open")) %>%
     # add_markers(y = ~lab.result, data = d_acs, marker = list(symbol = "circle-open")) %>%
     # add_markers(y = ~lab.result, data = d_dvt, marker = list(symbol = "circle-open")) %>%
-    add_lines(y = ~fitted(m_acs), data = d_acs, name = "ACS") %>%
-    add_lines(y = ~fitted(m_dvt), data = d_dvt, name = "DVT") %>%
+    add_lines(y = ~fitted(m_acs), data = d_acs, name = "ACS", legendgroup = "acs") %>%
+    add_lines(y = ~fitted(m_dvt), data = d_dvt, name = "DVT", legendgroup = "dvt") %>%
+    add_lines(y = ~fitted(m_cva), data = d_cva, name = "Stroke", legendgroup = "cva") %>%
     add_ribbons(data = augment(m_acs),
                 ymin = ~.fitted - 1.96 * .se.fit,
                 ymax = ~.fitted + 1.96 * .se.fit,
                 line = list(color = 'rgba(7, 164, 181, 0.05)'),
                 fillcolor = 'rgba(7, 164, 181, 0.2)',
-                showlegend = FALSE) %>%
+                showlegend = FALSE,
+                legendgroup = "acs") %>%
     add_ribbons(data = augment(m_dvt),
                 ymin = ~.fitted - 1.96 * .se.fit,
                 ymax = ~.fitted + 1.96 * .se.fit,
                 line = list(color = 'rgba(7, 164, 181, 0.05)'),
                 fillcolor = 'rgba(7, 164, 181, 0.2)',
-                showlegend = FALSE)
+                showlegend = FALSE, 
+                legendgroup = "dvt") %>%
+        add_ribbons(data = augment(m_cva),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE, 
+                legendgroup = "cva")
+
 ```
 
-```{r}
+```{r, eval=FALSE}
 hep_bolus %>%
     left_join(hep_start, by = "millennium.id") %>%
     left_join(hypothermia_start, by = "millennium.id") %>%
@@ -178,8 +199,8 @@ d_study <- filter(d, group == "Study")
 d_contr <- filter(d, group == "Control")
 
 # m <- lm(lab.result ~ vital.result, data = d)
-m_study <- lm(lab.result ~ vital.result, data = d, subset = group == "Study")
-m_contr <- lm(lab.result ~ vital.result, data = d, subset = group == "Control")
+m_study <- loess(lab.result ~ vital.result, data = d, subset = group == "Study")
+m_contr <- loess(lab.result ~ vital.result, data = d, subset = group == "Control")
 
 plot_ly(x = ~vital.result) %>%
     add_markers(data = d, 
@@ -211,7 +232,7 @@ plot_ly(x = ~vital.result) %>%
 ```
 
 ```{r}
-mod <- lm(ptt ~ temp, temp_ptt)
+mod <- lm(lab.result ~ vital.result, temp_ptt_full)
 
 mod %>%
     glance() %>%
@@ -220,6 +241,58 @@ mod %>%
 mod %>%
     tidy() %>%
     knitr::kable(caption = "Coefficients for PTT by Temperature")
+```
+
+```{r, fig.cap="Temperature vs. Heparin"}
+d <- temp_ptt_full %>%
+    filter(!is.na(vital.result),
+           !is.na(med.rate),
+           vital.result > 85)
+
+d_study <- filter(d, group == "Study")
+d_contr <- filter(d, group == "Control")
+
+m_study <- lm(med.rate ~ vital.result, data = d, subset = group == "Study")
+m_contr <- lm(med.rate ~ vital.result, data = d, subset = group == "Control")
+
+plot_ly(x = ~vital.result) %>%
+    add_markers(data = d, 
+                y = ~med.rate, 
+                split = ~group, 
+                marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m_study), 
+              data = d_study, 
+              legendgroup = "study", 
+              name = "Study") %>%
+    add_lines(y = ~fitted(m_contr), 
+              data = d_contr, 
+              legendgroup = "control", 
+              name = "Control") %>%
+    add_ribbons(data = augment(m_study),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = se_line,
+                fillcolor = se_fill,
+                legendgroup = "study",
+                showlegend = FALSE) %>%
+    add_ribbons(data = augment(m_contr),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = se_line,
+                fillcolor = se_fill,
+                legendgroup = "control",
+                showlegend = FALSE)
+```
+
+```{r}
+temp_ptt_full %>%
+    ungroup() %>%
+    select(-study_id) %>%
+    select_if(is.numeric) %>%
+    cor(use = "pairwise.complete.obs") %>%
+    tidy() %>%
+    knitr::kable(caption = "Correlation Analysis")
+
 ```
 
 ```{r, fig.cap="Time-Weighted Average of Heparin Dose vs. PTT"}
@@ -360,7 +433,11 @@ mod %>%
 ```
 
 ```{r}
-mod <- lm(ptt ~ temp + hep, temp_ptt)
+d <- temp_ptt_full %>%
+    left_join(hep_bolus_initiation[c("millennium.id", "med.dose")], by = "millennium.id") %>%
+    mutate(bolus = !is.na(med.dose))
+
+mod <- lm(lab.result ~ vital.result + med.rate + order + bolus, d)
 
 mod %>%
     glance() %>%
@@ -382,3 +459,22 @@ plot_ly(ck_ptt, x = ~duration_ptt, y = ~Value, split = ~Control) %>%
     add_markers(marker = list(symbol = "circle-open"))
 ```
 
+```{r, fig.cap="Temperature vs. Heparin Dose"}
+d <- ck_data %>%
+    filter(!is.na(Temperature),
+           !is.na(heparin))
+           # heparin > 0,
+           # heparin < 4000)
+
+m <- lm(heparin ~ Temperature, data = d)
+
+plot_ly(d, x = ~Temperature) %>%
+    add_markers(y = ~heparin, split = ~Control, marker = list(symbol = "circle-open")) %>%
+    add_lines(y = ~fitted(m), showlegend = FALSE) %>%
+    add_ribbons(data = augment(m),
+                ymin = ~.fitted - 1.96 * .se.fit,
+                ymax = ~.fitted + 1.96 * .se.fit,
+                line = list(color = 'rgba(7, 164, 181, 0.05)'),
+                fillcolor = 'rgba(7, 164, 181, 0.2)',
+                showlegend = FALSE)
+```

@@ -350,7 +350,8 @@ ck_data <- pts %>%
     group_by(Patient, Control, Time) %>%
     spread(Event, Value) %>%
     group_by(Patient, Control) %>%
-    fill(heparin, PTT, Temperature)
+    fill(heparin, PTT, Temperature) %>%
+    filter(Temperature < 40)
 
 write_rds(ck_heparin, "data/final/ck_heparin.Rds")
 write_rds(ck_ptt, "data/final/ck_ptt.Rds")
