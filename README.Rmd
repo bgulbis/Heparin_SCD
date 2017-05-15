@@ -8,3 +8,4 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 1. [Exploratory Data Analysis](https://bgulbis.github.io/Heparin_SCD/report/alcalde_plots.html)
+1. [Manuscript Data](https://bgulbis.github.io/Heparin_SCD/report/manuscript_data.html)
