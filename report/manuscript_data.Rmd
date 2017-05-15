@@ -1,0 +1,144 @@
+---
+title: "Manuscript"
+author: "Chelsea Krueger, Jen Cortes, Brian Gulbis"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+    code_folding: hide
+    fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(lubridate)
+library(forcats)
+library(themebg)
+library(plotly)
+library(broom)
+
+x <- dirr::get_rds("../data/final")
+# data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
+
+se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
+se_fill <- 'rgba(7, 164, 181, 0.2)'
+```
+
+```{r}
+bolus_ht <- hep_bolus_initiation %>%
+    distinct(millennium.id) %>%
+    mutate(bolus_hypotherm = TRUE)
+
+bolus_initial <- hep_bolus_initial %>%
+    distinct(millennium.id) %>%
+    mutate(bolus_initial = TRUE)
+
+bolus_prn <- hep_bolus_prn %>%
+    distinct(millennium.id) %>%
+    mutate(bolus_prn = TRUE)
+```
+
+```{r}
+hep_drip %>%
+    select(millennium.id) %>%
+    left_join(bolus_ht, by = "millennium.id") %>%
+    left_join(bolus_initial, by = "millennium.id") %>%
+    left_join(bolus_prn, by = "millennium.id") %>%
+    dmap_at(c("bolus_hypotherm", "bolus_initial", "bolus_prn"), ~coalesce(.x, FALSE)) %>%
+    select(-millennium.id) %>%
+    rename(`Bolus at hypothermia initiation` = bolus_hypotherm,
+           `Bolus on heparin initiation` = bolus_initial,
+           `PRN Bolus for subtherapeutic PTT` = bolus_prn) %>%
+    gather(variable, value, `Bolus at hypothermia initiation`:`PRN Bolus for subtherapeutic PTT`) %>%
+    ungroup() %>%
+    dmap_at("variable", fct_inorder) %>%
+    group_by(variable) %>%
+    summarize_at("value", funs(n = sum(.), total = sum(!is.na(.)), `n/a` = sum(is.na(.))), na.rm = TRUE) %>%
+    mutate(`%` = n / total * 100) %>%
+    select(variable, n, `%`, `n/a`) %>%
+    knitr::kable(digits = 2, caption = "Heparin Bolus Data (combined)")
+```
+
+```{r}
+hep_drip %>%
+    select(millennium.id, order) %>%
+    left_join(bolus_ht, by = "millennium.id") %>%
+    left_join(bolus_initial, by = "millennium.id") %>%
+    left_join(bolus_prn, by = "millennium.id") %>%
+    dmap_at(c("bolus_hypotherm", "bolus_initial", "bolus_prn"), ~coalesce(.x, FALSE)) %>%
+    select(-millennium.id) %>%
+    rename(`Bolus at hypothermia initiation` = bolus_hypotherm,
+           `Bolus on heparin initiation` = bolus_initial,
+           `PRN Bolus for subtherapeutic PTT` = bolus_prn) %>%
+    gather(variable, value, `Bolus at hypothermia initiation`:`PRN Bolus for subtherapeutic PTT`) %>%
+    ungroup() %>%
+    dmap_at("order", ~coalesce(.x, "Unknown")) %>%
+    dmap_at(c("order", "variable"), fct_inorder) %>%
+    group_by(order, variable) %>%
+    summarize_at("value", funs(n = sum(.), total = sum(!is.na(.)), `n/a` = sum(is.na(.))), na.rm = TRUE) %>%
+    mutate(`%` = n / total * 100) %>%
+    select(order, variable, n, `%`, `n/a`) %>%
+    knitr::kable(digits = 2, caption = "Heparin Bolus Data by Protocol")
+```
+
+```{r}
+hep_drip %>%
+    select(`Starting Rate` = first.rate,
+           `Ending Rate` = last.rate,
+           `Minimum Rate` = min.rate,
+           `Maximum Rate` = max.rate,
+           `Time-Weighted Average Rate` = time.wt.avg) %>%
+    gather(variable, value, `Starting Rate`:`Time-Weighted Average Rate`) %>%
+    ungroup() %>%
+    dmap_at("variable", fct_inorder) %>%
+    group_by(variable) %>%
+    summarize_at("value", funs(n = sum(!is.na(.)), min, max, mean, sd, median, `25th` = quantile(., probs = 0.25), `75th` = quantile(., probs = 0.75), `n/a` = sum(is.na(.))), na.rm = TRUE) %>%
+    knitr::kable(digits = 2, caption = "Heparin Rate Summaries (combined)")
+```
+
+```{r}
+hep_drip %>%
+    group_by(order) %>%
+    select(order,
+           `Starting Rate` = first.rate,
+           `Ending Rate` = last.rate,
+           `Minimum Rate` = min.rate,
+           `Maximum Rate` = max.rate,
+           `Time-Weighted Average Rate` = time.wt.avg) %>%
+    gather(variable, value, `Starting Rate`:`Time-Weighted Average Rate`) %>%
+    ungroup() %>%
+    dmap_at("order", ~coalesce(.x, "Unknown")) %>%
+    dmap_at(c("order", "variable"), fct_inorder) %>%
+    group_by(order, variable) %>%
+    summarize_at("value", funs(n = sum(!is.na(.)), min, max, mean, sd, median, `25th` = quantile(., probs = 0.25), `75th` = quantile(., probs = 0.75), `n/a` = sum(is.na(.))), na.rm = TRUE) %>%
+    knitr::kable(digits = 2, caption = "Heparin Rate Summaries by Protocol")
+```
+
+```{r}
+pts_held <- hep_run %>%
+    filter(med.rate == 0,
+           duration > 0) %>%
+    distinct(millennium.id) %>%
+    mutate(rate_held = TRUE)
+
+hep_drip %>%
+    select(millennium.id) %>%
+    left_join(pts_held, by = "millennium.id") %>%
+    dmap_at("rate_held", ~coalesce(.x, FALSE)) %>%
+    select(-millennium.id) %>%
+    rename(`Heparin Held` = rate_held) %>%
+    gather(variable, value) %>%
+    ungroup() %>%
+    dmap_at("variable", fct_inorder) %>%
+    group_by(variable) %>%
+    summarize_at("value", funs(n = sum(.), total = sum(!is.na(.)), `n/a` = sum(is.na(.))), na.rm = TRUE) %>%
+    mutate(`%` = n / total * 100) %>%
+    select(variable, n, `%`, `n/a`) %>%
+    knitr::kable(digits = 2, caption = "Number of patients with heparin held during infusion")
+```
+
+Average rate with therapeutic PTT
+
