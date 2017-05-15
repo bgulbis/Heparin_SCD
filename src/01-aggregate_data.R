@@ -139,6 +139,7 @@ hep_drip <- calc_runtime(hep_cont_units_fixed) %>%
 #     select(millennium.id, order, start.datetime, action.datetime)
 
 hep_run <- calc_runtime(hep_cont_units_fixed) %>%
+    filter(run.time > 0) %>%
     left_join(hypothermia_start[c("millennium.id", "hypothermia_start")], by = "millennium.id") %>%
     left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
     mutate(duration_hypothermia = as.numeric(difftime(rate.start, hypothermia_start, units = "hours")))
@@ -151,6 +152,17 @@ hep_bolus_initiation <- hep_bolus %>%
     mutate(time_heparin = as.numeric(difftime(med.datetime, heparin.start, units = "hours")),
            time_hypothermia = as.numeric(difftime(med.datetime, hypothermia_start, units = "hours"))) %>%
     filter(time_hypothermia >= -12, time_hypothermia <= 6)
+
+# bolus given at start of heparin infusion
+hep_bolus_initial <- hep_bolus %>%
+    left_join(hep_start, by = "millennium.id") %>%
+    mutate(time_heparin = as.numeric(difftime(med.datetime, heparin.start, units = "hours"))) %>%
+    filter(time_heparin >= -4, time_heparin <= 1)
+
+hep_bolus_prn <- hep_bolus %>%
+    left_join(hep_start, by = "millennium.id") %>%
+    mutate(time_heparin = as.numeric(difftime(med.datetime, heparin.start, units = "hours"))) %>%
+    filter(time_heparin > 1)
 
 hep_drip_sum <- hep_drip %>%
     group_by(millennium.id) %>%
@@ -287,6 +299,8 @@ write_rds(ptt_run, "data/final/ptt_run.Rds", "gz")
 write_rds(hep_bolus_initiation, "data/final/hep_bolus_initiation.Rds", "gz")
 write_rds(hep_protocol, "data/final/hep_protocol.Rds", "gz")
 write_rds(hep_drip, "data/final/hep_drip.Rds", "gz")
+write_rds(hep_bolus_initial, "data/final/hep_bolus_initial.Rds", "gz")
+write_rds(hep_bolus_prn, "data/final/hep_bolus_prn.Rds", "gz")
 
 
 temp_ptt %>%
