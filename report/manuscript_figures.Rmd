@@ -71,7 +71,6 @@ ptt_run %>%
     annotate("text", x = 48, y = 81, label = "VTE", color = "grey35") +
     annotate("text", x = 48, y = 66, label = "ACS", color = "grey35") +
     annotate("text", x = 48, y = 47, label = "Stroke", color = "grey35") +
-    
     scale_x_continuous("Time from initiation of TTM protocol (hours)", breaks = seq(-24, 72, 12)) +
     scale_y_continuous("PTT (seconds)", breaks = seq(0, 175, 25)) +
     scale_linetype_manual("TTM Protocol", values = c(1, 2, 3), guide = "none") +
