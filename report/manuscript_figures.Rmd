@@ -22,6 +22,11 @@ library(themebg)
 # library(directlabels)
 library(aws.s3)
 
+# prevent peer checking due to MH firewall
+if (.Platform$OS.type == "windows") {
+    httr::set_config(httr::config(ssl_verifypeer = 0L))
+}
+
 # x <- dirr::get_rds("../data/final")
 bucket <- "heparin-scd"
 ck_data <- s3readRDS("data/final/ck_data.Rds", bucket)
