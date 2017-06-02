@@ -1,0 +1,76 @@
+---
+title: "Manuscript Figures"
+author: "Chelsea Krueger, Jen Cortes, Brian Gulbis"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+    code_folding: hide
+    fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(purrrlyr)
+library(lubridate)
+library(stringr)
+library(forcats)
+library(themebg)
+
+x <- dirr::get_rds("../data/final")
+```
+
+```{r, warning=FALSE, fig.cap="Figure 1"}
+ck_data %>%
+    mutate(phase = if_else(Temperature <= 34, "Cooling Phase", "Rewarming Phase")) %>%
+    ungroup() %>%
+    dmap_at("Control", str_replace_all, pattern = "Study", replacement = "Treatment") %>%
+    dmap_at("Control", fct_infreq) %>%
+    # dmap_at("Control", fct_rev) %>%
+    ggplot(aes(x = Control, y = PTT)) +
+    geom_boxplot() +
+    facet_wrap(~phase) +
+    xlab("") +
+    ylab("PTT (seconds)") +
+    theme_bg(xticks = FALSE)
+
+ggsave("../figs/figure-1_boxplot_ptt-temperature-phase.tiff", device = "tiff", width = 170, height = 85, units = "mm", dpi = 300, compression = "lzw")
+
+ggsave("../figs/figure-1_boxplot_ptt-temperature-phase.pdf", device = "pdf", width = 170, height = 85, units = "mm")
+```
+
+```{r}
+bolus <- hep_bolus_initiation %>%
+    distinct(millennium.id) %>%
+    mutate(bolus = TRUE)
+
+ptt_run %>%
+    left_join(bolus, by = "millennium.id") %>%
+    left_join(hep_protocol[c("millennium.id", "order")], by = "millennium.id") %>%
+    dmap_at("bolus", ~coalesce(.x, FALSE)) %>%
+    filter(!is.na(duration_heparin),
+           duration_hypothermia > -24,
+           duration_hypothermia < 72,
+           order %in% c("ACS", "DVT", "Stroke")) %>%
+    left_join(hep_drip[c("millennium.id", "start.datetime", "stop.datetime")], by = "millennium.id") %>%
+    # filter(lab.datetime >= start.datetime - hours(4),
+           # lab.datetime <= stop.datetime + hours(4)) %>%
+    ggplot(aes(x = duration_hypothermia, y = lab.result)) +
+    # geom_point(aes(color = order), shape = 1) +
+    geom_smooth(aes(linetype = order), color = "black", method = "loess", se = FALSE) +
+    scale_x_continuous("Time from initiation of TTM protocol (hours)", breaks = seq(-24, 72, 12)) +
+    scale_y_continuous("PTT (seconds)", breaks = seq(0, 175, 25)) +
+    # scale_linetype_discrete("TTM Protocol", labels = c("ACS", "VTE", "Stroke Prevention")) +
+    scale_linetype_manual("TTM Protocol", values = c(1, 2, 3), labels = c("ACS", "VTE", "Stroke")) +
+    coord_cartesian(xlim = c(0, 48), ylim = c(20, 130)) +
+    theme_bg() +
+    theme(legend.position = "top", legend.title = element_text(color = "grey35"))
+
+ggsave("../figs/figure-2_line_ttm-start-ptt.tiff", device = "tiff", width = 170, height = 85, units = "mm", dpi = 300, compression = "lzw")
+
+ggsave("../figs/figure-2_line_ttm-start-ptt.pdf", device = "pdf", width = 170, height = 85, units = "mm")
+```
+
