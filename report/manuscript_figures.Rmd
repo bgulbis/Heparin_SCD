@@ -19,8 +19,16 @@ library(lubridate)
 library(stringr)
 library(forcats)
 library(themebg)
+# library(directlabels)
+library(aws.s3)
 
-x <- dirr::get_rds("../data/final")
+# x <- dirr::get_rds("../data/final")
+bucket <- "heparin-scd"
+ck_data <- s3readRDS("data/final/ck_data.Rds", bucket)
+ptt_run <- s3readRDS("data/final/ptt_run.Rds", bucket)
+hep_bolus_initiation <- s3readRDS("data/final/hep_bolus_initiation.Rds", bucket)
+hep_protocol <- s3readRDS("data/final/hep_protocol.Rds", bucket)
+hep_drip <- s3readRDS("data/final/hep_drip.Rds", bucket)
 ```
 
 ```{r, warning=FALSE, fig.cap="Figure 1"}
@@ -59,12 +67,13 @@ ptt_run %>%
     # filter(lab.datetime >= start.datetime - hours(4),
            # lab.datetime <= stop.datetime + hours(4)) %>%
     ggplot(aes(x = duration_hypothermia, y = lab.result)) +
-    # geom_point(aes(color = order), shape = 1) +
     geom_smooth(aes(linetype = order), color = "black", method = "loess", se = FALSE) +
+    annotate("text", x = 48, y = 81, label = "VTE") +
+    annotate("text", x = 48, y = 66, label = "ACS") +
+    annotate("text", x = 48, y = 47, label = "Stroke") +
     scale_x_continuous("Time from initiation of TTM protocol (hours)", breaks = seq(-24, 72, 12)) +
     scale_y_continuous("PTT (seconds)", breaks = seq(0, 175, 25)) +
-    # scale_linetype_discrete("TTM Protocol", labels = c("ACS", "VTE", "Stroke Prevention")) +
-    scale_linetype_manual("TTM Protocol", values = c(1, 2, 3), labels = c("ACS", "VTE", "Stroke")) +
+    scale_linetype_manual("TTM Protocol", values = c(1, 2, 3), guide = "none") +
     coord_cartesian(xlim = c(0, 48), ylim = c(20, 130)) +
     theme_bg() +
     theme(legend.position = "top", legend.title = element_text(color = "grey35"))
