@@ -11,7 +11,7 @@
 
 <meta name="author" content="Chelsea Krueger, Jen Cortes, Brian Gulbis" />
 
-<meta name="date" content="2017-05-15" />
+<meta name="date" content="2017-06-05" />
 
 <title>Manuscript</title>
 
@@ -136,20 +136,33 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Manuscript</h1>
 <h4 class="author"><em>Chelsea Krueger, Jen Cortes, Brian Gulbis</em></h4>
-<h4 class="date"><em>May 15, 2017</em></h4>
+<h4 class="date"><em>June 05, 2017</em></h4>
 
 </div>
 
 
 <pre class="r"><code>library(tidyverse)
+library(purrrlyr)
 library(lubridate)
 library(forcats)
 library(themebg)
 library(plotly)
 library(broom)
+library(aws.s3)
 
-x &lt;- dirr::get_rds(&quot;../data/final&quot;)
-# data_wt_avg &lt;- read_rds(&quot;../data/final/data_wt_avg.rds&quot;)
+# prevent peer checking due to MH firewall
+if (.Platform$OS.type == &quot;windows&quot;) {
+    httr::set_config(httr::config(ssl_verifypeer = 0L))
+}
+
+# x &lt;- dirr::get_rds(&quot;../data/final&quot;)
+bucket &lt;- &quot;heparin-scd&quot;
+
+hep_bolus_initiation &lt;- s3readRDS(&quot;data/final/hep_bolus_initiation.Rds&quot;, bucket)
+hep_bolus_initial &lt;- s3readRDS(&quot;data/final/hep_bolus_initial.Rds&quot;, bucket)
+hep_bolus_prn &lt;- s3readRDS(&quot;data/final/hep_bolus_prn.Rds&quot;, bucket)
+hep_drip &lt;- s3readRDS(&quot;data/final/hep_drip.Rds&quot;, bucket)
+hep_run &lt;- s3readRDS(&quot;data/final/hep_run.Rds&quot;, bucket)
 
 se_line &lt;- list(color = 'rgba(7, 164, 181, 0.05)')
 se_fill &lt;- 'rgba(7, 164, 181, 0.2)'</code></pre>
@@ -245,105 +258,105 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">ACS</td>
-<td align="left">Bolus at hypothermia initiation</td>
-<td align="right">34</td>
-<td align="right">38.20</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="left">ACS</td>
-<td align="left">Bolus on heparin initiation</td>
-<td align="right">43</td>
-<td align="right">48.31</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td align="left">ACS</td>
-<td align="left">PRN Bolus for subtherapeutic PTT</td>
-<td align="right">37</td>
-<td align="right">41.57</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
 <td align="left">DVT</td>
 <td align="left">Bolus at hypothermia initiation</td>
 <td align="right">8</td>
 <td align="right">28.57</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">DVT</td>
 <td align="left">Bolus on heparin initiation</td>
 <td align="right">14</td>
 <td align="right">50.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">DVT</td>
 <td align="left">PRN Bolus for subtherapeutic PTT</td>
 <td align="right">13</td>
 <td align="right">46.43</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
-<td align="left">Fixed</td>
+<tr class="even">
+<td align="left">ACS</td>
 <td align="left">Bolus at hypothermia initiation</td>
-<td align="right">0</td>
-<td align="right">0.00</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="left">Fixed</td>
-<td align="left">Bolus on heparin initiation</td>
-<td align="right">0</td>
-<td align="right">0.00</td>
+<td align="right">34</td>
+<td align="right">38.20</td>
 <td align="right">0</td>
 </tr>
 <tr class="odd">
-<td align="left">Fixed</td>
-<td align="left">PRN Bolus for subtherapeutic PTT</td>
-<td align="right">0</td>
-<td align="right">0.00</td>
+<td align="left">ACS</td>
+<td align="left">Bolus on heparin initiation</td>
+<td align="right">43</td>
+<td align="right">48.31</td>
 <td align="right">0</td>
 </tr>
 <tr class="even">
+<td align="left">ACS</td>
+<td align="left">PRN Bolus for subtherapeutic PTT</td>
+<td align="right">37</td>
+<td align="right">41.57</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
 <td align="left">Unknown</td>
 <td align="left">Bolus at hypothermia initiation</td>
 <td align="right">3</td>
 <td align="right">50.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Unknown</td>
 <td align="left">Bolus on heparin initiation</td>
 <td align="right">1</td>
 <td align="right">16.67</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Unknown</td>
 <td align="left">PRN Bolus for subtherapeutic PTT</td>
 <td align="right">5</td>
 <td align="right">83.33</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Stroke</td>
 <td align="left">Bolus at hypothermia initiation</td>
 <td align="right">0</td>
 <td align="right">0.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Stroke</td>
 <td align="left">Bolus on heparin initiation</td>
 <td align="right">0</td>
 <td align="right">0.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Stroke</td>
+<td align="left">PRN Bolus for subtherapeutic PTT</td>
+<td align="right">0</td>
+<td align="right">0.00</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Fixed</td>
+<td align="left">Bolus at hypothermia initiation</td>
+<td align="right">0</td>
+<td align="right">0.00</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Fixed</td>
+<td align="left">Bolus on heparin initiation</td>
+<td align="right">0</td>
+<td align="right">0.00</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Fixed</td>
 <td align="left">PRN Bolus for subtherapeutic PTT</td>
 <td align="right">0</td>
 <td align="right">0.00</td>
@@ -476,71 +489,6 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">ACS</td>
-<td align="left">Starting Rate</td>
-<td align="right">89</td>
-<td align="right">0.00</td>
-<td align="right">16.00</td>
-<td align="right">10.61</td>
-<td align="right">4.10</td>
-<td align="right">12.00</td>
-<td align="right">11.00</td>
-<td align="right">12.00</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="left">ACS</td>
-<td align="left">Ending Rate</td>
-<td align="right">89</td>
-<td align="right">3.59</td>
-<td align="right">24.00</td>
-<td align="right">11.41</td>
-<td align="right">4.45</td>
-<td align="right">12.00</td>
-<td align="right">8.71</td>
-<td align="right">14.00</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td align="left">ACS</td>
-<td align="left">Minimum Rate</td>
-<td align="right">89</td>
-<td align="right">1.97</td>
-<td align="right">14.00</td>
-<td align="right">8.33</td>
-<td align="right">3.36</td>
-<td align="right">8.00</td>
-<td align="right">5.00</td>
-<td align="right">12.00</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="left">ACS</td>
-<td align="left">Maximum Rate</td>
-<td align="right">89</td>
-<td align="right">6.00</td>
-<td align="right">25.00</td>
-<td align="right">13.57</td>
-<td align="right">3.22</td>
-<td align="right">13.00</td>
-<td align="right">12.00</td>
-<td align="right">14.00</td>
-<td align="right">0</td>
-</tr>
-<tr class="odd">
-<td align="left">ACS</td>
-<td align="left">Time-Weighted Average Rate</td>
-<td align="right">84</td>
-<td align="right">2.19</td>
-<td align="right">16.90</td>
-<td align="right">8.80</td>
-<td align="right">3.76</td>
-<td align="right">8.01</td>
-<td align="right">5.48</td>
-<td align="right">11.43</td>
-<td align="right">5</td>
-</tr>
-<tr class="even">
 <td align="left">DVT</td>
 <td align="left">Starting Rate</td>
 <td align="right">28</td>
@@ -553,7 +501,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">18.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">DVT</td>
 <td align="left">Ending Rate</td>
 <td align="right">28</td>
@@ -566,7 +514,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">17.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">DVT</td>
 <td align="left">Minimum Rate</td>
 <td align="right">28</td>
@@ -579,7 +527,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">14.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">DVT</td>
 <td align="left">Maximum Rate</td>
 <td align="right">28</td>
@@ -592,7 +540,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">18.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">DVT</td>
 <td align="left">Time-Weighted Average Rate</td>
 <td align="right">28</td>
@@ -605,72 +553,72 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">12.94</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
-<td align="left">Fixed</td>
+<tr class="even">
+<td align="left">ACS</td>
 <td align="left">Starting Rate</td>
-<td align="right">1</td>
+<td align="right">89</td>
+<td align="right">0.00</td>
+<td align="right">16.00</td>
+<td align="right">10.61</td>
+<td align="right">4.10</td>
 <td align="right">12.00</td>
-<td align="right">12.00</td>
-<td align="right">12.00</td>
-<td align="right">NaN</td>
-<td align="right">12.00</td>
-<td align="right">12.00</td>
+<td align="right">11.00</td>
 <td align="right">12.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
-<td align="left">Fixed</td>
+<tr class="odd">
+<td align="left">ACS</td>
 <td align="left">Ending Rate</td>
-<td align="right">1</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
-<td align="right">NaN</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
+<td align="right">89</td>
+<td align="right">3.59</td>
+<td align="right">24.00</td>
+<td align="right">11.41</td>
+<td align="right">4.45</td>
+<td align="right">12.00</td>
+<td align="right">8.71</td>
+<td align="right">14.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
-<td align="left">Fixed</td>
+<tr class="even">
+<td align="left">ACS</td>
 <td align="left">Minimum Rate</td>
-<td align="right">1</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
-<td align="right">NaN</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
-<td align="right">6.00</td>
-<td align="right">0</td>
-</tr>
-<tr class="even">
-<td align="left">Fixed</td>
-<td align="left">Maximum Rate</td>
-<td align="right">1</td>
-<td align="right">12.00</td>
-<td align="right">12.00</td>
-<td align="right">12.00</td>
-<td align="right">NaN</td>
-<td align="right">12.00</td>
-<td align="right">12.00</td>
+<td align="right">89</td>
+<td align="right">1.97</td>
+<td align="right">14.00</td>
+<td align="right">8.33</td>
+<td align="right">3.36</td>
+<td align="right">8.00</td>
+<td align="right">5.00</td>
 <td align="right">12.00</td>
 <td align="right">0</td>
 </tr>
 <tr class="odd">
-<td align="left">Fixed</td>
-<td align="left">Time-Weighted Average Rate</td>
-<td align="right">1</td>
-<td align="right">4.97</td>
-<td align="right">4.97</td>
-<td align="right">4.97</td>
-<td align="right">NaN</td>
-<td align="right">4.97</td>
-<td align="right">4.97</td>
-<td align="right">4.97</td>
+<td align="left">ACS</td>
+<td align="left">Maximum Rate</td>
+<td align="right">89</td>
+<td align="right">6.00</td>
+<td align="right">25.00</td>
+<td align="right">13.57</td>
+<td align="right">3.22</td>
+<td align="right">13.00</td>
+<td align="right">12.00</td>
+<td align="right">14.00</td>
 <td align="right">0</td>
 </tr>
 <tr class="even">
+<td align="left">ACS</td>
+<td align="left">Time-Weighted Average Rate</td>
+<td align="right">84</td>
+<td align="right">2.19</td>
+<td align="right">16.90</td>
+<td align="right">8.80</td>
+<td align="right">3.76</td>
+<td align="right">8.01</td>
+<td align="right">5.48</td>
+<td align="right">11.43</td>
+<td align="right">5</td>
+</tr>
+<tr class="odd">
 <td align="left">Unknown</td>
 <td align="left">Starting Rate</td>
 <td align="right">6</td>
@@ -683,7 +631,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">13.50</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Unknown</td>
 <td align="left">Ending Rate</td>
 <td align="right">6</td>
@@ -696,7 +644,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">20.00</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Unknown</td>
 <td align="left">Minimum Rate</td>
 <td align="right">6</td>
@@ -709,7 +657,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">12.50</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Unknown</td>
 <td align="left">Maximum Rate</td>
 <td align="right">6</td>
@@ -722,7 +670,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">23.50</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Unknown</td>
 <td align="left">Time-Weighted Average Rate</td>
 <td align="right">6</td>
@@ -735,7 +683,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">13.16</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Stroke</td>
 <td align="left">Starting Rate</td>
 <td align="right">2</td>
@@ -748,7 +696,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">10.60</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Stroke</td>
 <td align="left">Ending Rate</td>
 <td align="right">2</td>
@@ -761,7 +709,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">25.38</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Stroke</td>
 <td align="left">Minimum Rate</td>
 <td align="right">2</td>
@@ -774,7 +722,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">6.85</td>
 <td align="right">0</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Stroke</td>
 <td align="left">Maximum Rate</td>
 <td align="right">2</td>
@@ -787,7 +735,7 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">36.30</td>
 <td align="right">0</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Stroke</td>
 <td align="left">Time-Weighted Average Rate</td>
 <td align="right">2</td>
@@ -798,6 +746,71 @@ bolus_prn &lt;- hep_bolus_prn %&gt;%
 <td align="right">15.54</td>
 <td align="right">10.53</td>
 <td align="right">20.56</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Fixed</td>
+<td align="left">Starting Rate</td>
+<td align="right">1</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">NA</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Fixed</td>
+<td align="left">Ending Rate</td>
+<td align="right">1</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">NA</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Fixed</td>
+<td align="left">Minimum Rate</td>
+<td align="right">1</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">NA</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">6.00</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">Fixed</td>
+<td align="left">Maximum Rate</td>
+<td align="right">1</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">NA</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">12.00</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Fixed</td>
+<td align="left">Time-Weighted Average Rate</td>
+<td align="right">1</td>
+<td align="right">4.97</td>
+<td align="right">4.97</td>
+<td align="right">4.97</td>
+<td align="right">NA</td>
+<td align="right">4.97</td>
+<td align="right">4.97</td>
+<td align="right">4.97</td>
 <td align="right">0</td>
 </tr>
 </tbody>
@@ -835,8 +848,8 @@ hep_drip %&gt;%
 <tbody>
 <tr class="odd">
 <td align="left">Heparin Held</td>
-<td align="right">112</td>
-<td align="right">88.89</td>
+<td align="right">89</td>
+<td align="right">70.63</td>
 <td align="right">0</td>
 </tr>
 </tbody>

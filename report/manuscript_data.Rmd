@@ -14,14 +14,27 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(purrrlyr)
 library(lubridate)
 library(forcats)
 library(themebg)
 library(plotly)
 library(broom)
+library(aws.s3)
 
-x <- dirr::get_rds("../data/final")
-# data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
+# prevent peer checking due to MH firewall
+if (.Platform$OS.type == "windows") {
+    httr::set_config(httr::config(ssl_verifypeer = 0L))
+}
+
+# x <- dirr::get_rds("../data/final")
+bucket <- "heparin-scd"
+
+hep_bolus_initiation <- s3readRDS("data/final/hep_bolus_initiation.Rds", bucket)
+hep_bolus_initial <- s3readRDS("data/final/hep_bolus_initial.Rds", bucket)
+hep_bolus_prn <- s3readRDS("data/final/hep_bolus_prn.Rds", bucket)
+hep_drip <- s3readRDS("data/final/hep_drip.Rds", bucket)
+hep_run <- s3readRDS("data/final/hep_run.Rds", bucket)
 
 se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
 se_fill <- 'rgba(7, 164, 181, 0.2)'
