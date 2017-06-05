@@ -15,7 +15,7 @@ identifiers <- read_rds("data/tidy/identifiers.Rds") %>%
     rename(millennium_orig = millennium.id,
            millennium.id = millennium_md5)
 
-patients <- select(identifiers, millennium.id, group, pie.id, millennium_orig)
+patients <- select(identifiers, millennium.id, group)
 
 md5_id <- function(df) {
     df %>%
@@ -53,6 +53,8 @@ weights_hep <- read_data(dir_raw, "weights") %>%
     select(millennium.id, group, everything(), -pie.id)
 
 # sync data --------------------------------------------
+
+s3saveRDS(patients, "data/final/patients.Rds", bucket)
 
 s3saveRDS(meds_inpt, "data/raw/meds_inpt.Rds", bucket)
 s3saveRDS(temp, "data/raw/temp.Rds", bucket)
