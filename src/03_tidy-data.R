@@ -36,13 +36,13 @@ heparin_mpp <- mpp %>%
     group_by(millennium.id, order) %>%
     distinct(.keep_all = TRUE)
 
-weights_hep <- s3readRDS("data/raw/weights_hep", bucket) %>%
+weights_hep <- s3readRDS("data/raw/weights_hep.Rds", bucket) %>%
     dmap_at("event.result", as.numeric) %>%
     filter(event.result >= 20)
 
 ref <- tibble(name = "heparin", type = "med", group = "cont")
 
-meds_inpt <- s3readRDS("data/raw/meds_inpt", bucket) %>%
+meds_inpt <- s3readRDS("data/raw/meds_inpt.Rds", bucket) %>%
     tidy_data(ref)
 
 hep_cont <- filter(meds_inpt, !is.na(event.tag))
@@ -121,7 +121,7 @@ hep_drip_sum <- hep_drip %>%
 
 hep_join <- select(hep_drip_sum, millennium.id, hep.time.wt.avg = time.wt.avg)
 
-temp <- s3readRDS("data/raw/temp", bucket) %>%
+temp <- s3readRDS("data/raw/temp.Rds", bucket) %>%
     left_join(hypothermia_start, by = "millennium.id") %>%
     filter((vital.result > 80 & vital.result.units == "DegF"),
            vital.datetime >= hypothermia_start - hours(12),
@@ -150,7 +150,7 @@ temp_bin_sum <- temp_bin %>%
 
 temp_hr <- mutate(temp, hour = floor_date(vital.datetime, "hours"))
 
-ptt <- s3readRDS("data/raw/ptt", bucket) %>%
+ptt <- s3readRDS("data/raw/ptt.Rds", bucket) %>%
     tidy_data() %>%
     left_join(hep_start, by = "millennium.id") %>%
     left_join(hypothermia_start, by = "millennium.id") %>%
@@ -174,14 +174,14 @@ ptt_join <- select(ptt_sum, millennium.id, ptt.time.wt.avg = time.wt.avg)
 
 ptt_hr <- mutate(ptt, hour = floor_date(lab.datetime, "hours"))
 
-temp_ptt <- inner_join(temp_hr, ptt_hr, by = c("millennium.id", "hour", "group")) %>%
+temp_ptt <- inner_join(temp_hr, ptt_hr, by = c("millennium.id", "hour")) %>%
     left_join(hep_run, by = "millennium.id") %>%
     filter(hour >= rate.start,
            hour <= rate.stop) %>%
-    select(millennium.id, hour, group, temp = vital.result, ptt = lab.result, hep = med.rate)
+    select(millennium.id, hour, temp = vital.result, ptt = lab.result, hep = med.rate)
 
 temp_ptt_full <- temp_hr %>%
-    full_join(ptt_hr, by = c("millennium.id", "hour", "group", "hypothermia_start")) %>%
+    full_join(ptt_hr, by = c("millennium.id", "hour", "hypothermia_start")) %>%
     arrange(millennium.id, hour) %>%
     group_by(millennium.id) %>%
     fill(vital, vital.result, lab, lab.result) %>%
@@ -200,13 +200,9 @@ ptt_hep <- ptt %>%
            lab.datetime <= rate.stop,
            med.rate < 25)
 
-data_wt_avg <- patients %>%
-    ungroup() %>%
-    select(millennium_md5, group) %>%
-    rename(millennium.id = millennium_md5) %>%
-    left_join(hep_join, by = "millennium.id") %>%
-    left_join(ptt_join, by = "millennium.id") %>%
-    left_join(temp_join, by = "millennium.id")
+data_wt_avg <- hep_join %>%
+    full_join(ptt_join, by = "millennium.id") %>%
+    full_join(temp_join, by = "millennium.id")
 
 # save final data --------------------------------------
 s3saveRDS(data_wt_avg, "data/final/data_wt_avg.Rds", bucket)
