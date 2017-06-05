@@ -14,13 +14,37 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(purrrlyr)
 library(lubridate)
 library(themebg)
 library(plotly)
 library(broom)
+library(aws.s3)
 
-x <- dirr::get_rds("../data/final")
+# x <- dirr::get_rds("../data/final")
 # data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
+
+# prevent peer checking due to MH firewall
+if (.Platform$OS.type == "windows") {
+    httr::set_config(httr::config(ssl_verifypeer = 0L))
+}
+
+bucket <- "heparin-scd"
+
+hep_bolus_initiation <- s3readRDS("data/final/hep_bolus_initiation.Rds", bucket)
+ptt_run <- s3readRDS("data/final/ptt_run.Rds", bucket)
+hep_run <- s3readRDS("data/final/hep_run.Rds", bucket)
+data_wt_avg <- s3readRDS("data/final/data_wt_avg.Rds", bucket)
+patients <- s3readRDS("data/final/patients.Rds", bucket)
+temp_ptt_full <- s3readRDS("data/final/temp_ptt_full.Rds", bucket)
+temp_ptt <- s3readRDS("data/final/temp_ptt.Rds", bucket)
+hep_protocol <- s3readRDS("data/final/hep_protocol.Rds", bucket)
+hep_drip <- s3readRDS("data/final/hep_drip.Rds", bucket)
+
+ck_heparin <- s3readRDS("data/final/ck_heparin.Rds", bucket)
+ck_ptt <- s3readRDS("data/final/ck_ptt.Rds", bucket)
+ck_temp <- s3readRDS("data/final/ck_temp.Rds", bucket)
+ck_data <- s3readRDS("data/final/ck_data.Rds", bucket)
 
 se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
 se_fill <- 'rgba(7, 164, 181, 0.2)'
@@ -154,16 +178,16 @@ plot_ly(x = ~duration_hypothermia) %>%
 ```
 
 ```{r, eval=FALSE}
-hep_bolus %>%
-    left_join(hep_start, by = "millennium.id") %>%
-    left_join(hypothermia_start, by = "millennium.id") %>%
-    filter(!is.na(hypothermia_start)) %>%
-    mutate(time_heparin = as.numeric(difftime(med.datetime, heparin.start, units = "hours")),
-           time_hypothermia = as.numeric(difftime(med.datetime, hypothermia_start, units = "hours"))) %>%
-    filter(time_hypothermia >= -24, time_hypothermia <= 72) %>%
-    ggplot(aes(x = time_hypothermia, y = med.dose)) +
-    geom_point(shape = 1) +
-    theme_bg()
+# hep_bolus_initial %>%
+#     left_join(hep_start, by = "millennium.id") %>%
+#     left_join(hypothermia_start, by = "millennium.id") %>%
+#     filter(!is.na(hypothermia_start)) %>%
+#     mutate(time_heparin = as.numeric(difftime(med.datetime, heparin.start, units = "hours")),
+#            time_hypothermia = as.numeric(difftime(med.datetime, hypothermia_start, units = "hours"))) %>%
+#     filter(time_hypothermia >= -24, time_hypothermia <= 72) %>%
+#     ggplot(aes(x = time_hypothermia, y = med.dose)) +
+#     geom_point(shape = 1) +
+#     theme_bg()
 ```
 
 
@@ -171,6 +195,7 @@ hep_bolus %>%
 
 ```{r, fig.cap="Time-Weighted Average of Temperature vs. PTT"}
 d <- data_wt_avg %>%
+    left_join(patients, by = "millennium.id") %>%
     filter(!is.na(temp.time.wt.avg),
            !is.na(ptt.time.wt.avg))
 
@@ -201,6 +226,7 @@ mod %>%
 
 ```{r, fig.cap="Temperature vs. PTT"}
 d <- temp_ptt_full %>%
+    left_join(patients, by = "millennium.id") %>%
     filter(!is.na(vital.result),
            !is.na(lab.result),
            vital.result > 85)
@@ -255,6 +281,7 @@ mod %>%
 
 ```{r, fig.cap="Temperature vs. Heparin"}
 d <- temp_ptt_full %>%
+    left_join(patients, by = "millennium.id") %>%
     filter(!is.na(vital.result),
            !is.na(med.rate),
            vital.result > 85)
@@ -297,7 +324,7 @@ plot_ly(x = ~vital.result) %>%
 ```{r}
 temp_ptt_full %>%
     ungroup() %>%
-    select(-study_id) %>%
+    # select(-study_id) %>%
     select_if(is.numeric) %>%
     cor(use = "pairwise.complete.obs") %>%
     tidy() %>%
@@ -307,6 +334,7 @@ temp_ptt_full %>%
 
 ```{r, fig.cap="Time-Weighted Average of Heparin Dose vs. PTT"}
 d <- data_wt_avg %>%
+    left_join(patients, by = "millennium.id") %>%
     filter(!is.na(hep.time.wt.avg),
            !is.na(ptt.time.wt.avg))
 
@@ -337,6 +365,7 @@ mod %>%
 
 ```{r, fig.cap="Heparin Dose vs. PTT"}
 d <- temp_ptt %>%
+    left_join(patients, by = "millennium.id") %>%
     filter(!is.na(ptt),
            !is.na(hep),
            temp > 85)
@@ -369,6 +398,7 @@ mod %>%
 
 ```{r, fig.cap="Time-Weighted Average of Temperature vs. Heparin Dose"}
 d <- data_wt_avg %>%
+    left_join(patients, by = "millennium.id") %>%
     filter(!is.na(hep.time.wt.avg),
            !is.na(temp.time.wt.avg))
 
@@ -399,6 +429,7 @@ mod %>%
 
 ```{r, fig.cap="Temperature vs. Heparin Dose"}
 d <- temp_ptt %>%
+    left_join(patients, by = "millennium.id") %>%
     filter(!is.na(temp),
            !is.na(hep),
            temp > 85)
@@ -461,7 +492,8 @@ mod %>%
 # Chelsea's Data
 
 ```{r, eval=FALSE}
-plot_ly(ck_heparin, x = ~as.numeric(duration), y = ~Value, split = ~Control)
+plot_ly(ck_heparin, x = ~as.numeric(duration), y = ~Value, split = ~Control) %>%
+    add_markers()
 ```
 
 ```{r, eval=FALSE}
