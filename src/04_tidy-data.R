@@ -4,16 +4,17 @@ library(stringr)
 library(lubridate)
 library(edwr)
 library(MESS)
-library(aws.s3)
 
-bucket <- "heparin-scd"
+dir_raw <- "data/raw"
 
-# prevent peer checking due to MH firewall
-if (.Platform$OS.type == "windows") {
-    httr::set_config(httr::config(ssl_verifypeer = 0L))
-}
+identifiers <- read_rds("data/tidy/identifiers.Rds")
 
-mpp <- s3readRDS("data/raw/mpp.Rds", bucket)
+patients <- select(identifiers, millennium.id, group)
+
+mpp <- read_data(dir_raw, "mpp") %>%
+    as.order_by() %>%
+    left_join(identifiers[c("millennium.id", "group", "pie.id")], by = "pie.id") %>%
+    select(millennium.id, group, everything(), -pie.id)
 
 hypothermia_start <- mpp %>%
     filter(action.type == "Order",
@@ -36,13 +37,17 @@ heparin_mpp <- mpp %>%
     group_by(millennium.id, order) %>%
     distinct(.keep_all = TRUE)
 
-weights_hep <- s3readRDS("data/raw/weights_hep.Rds", bucket) %>%
+weights_hep <- read_data(dir_raw, "weights") %>%
+    as.events() %>%
+    left_join(identifiers[c("millennium.id", "group", "pie.id")], by = "pie.id") %>%
+    select(millennium.id, group, everything(), -pie.id) %>%
     dmap_at("event.result", as.numeric) %>%
     filter(event.result >= 20)
 
 ref <- tibble(name = "heparin", type = "med", group = "cont")
 
-meds_inpt <- s3readRDS("data/raw/meds_inpt.Rds", bucket) %>%
+meds_inpt <- read_data(dir_raw, "meds-inpt", FALSE) %>%
+    as.meds_inpt() %>%
     tidy_data(ref)
 
 hep_cont <- filter(meds_inpt, !is.na(event.tag))
@@ -121,7 +126,8 @@ hep_drip_sum <- hep_drip %>%
 
 hep_join <- select(hep_drip_sum, millennium.id, hep.time.wt.avg = time.wt.avg)
 
-temp <- s3readRDS("data/raw/temp.Rds", bucket) %>%
+temp <- read_data(dir_raw, "mbo_vitals", FALSE) %>%
+    as.vitals() %>%
     left_join(hypothermia_start, by = "millennium.id") %>%
     filter((vital.result > 80 & vital.result.units == "DegF"),
            vital.datetime >= hypothermia_start - hours(12),
@@ -150,7 +156,8 @@ temp_bin_sum <- temp_bin %>%
 
 temp_hr <- mutate(temp, hour = floor_date(vital.datetime, "hours"))
 
-ptt <- s3readRDS("data/raw/ptt.Rds", bucket) %>%
+ptt <- read_data(dir_raw, "mbo_labs", FALSE) %>%
+    as.labs() %>%
     tidy_data() %>%
     left_join(hep_start, by = "millennium.id") %>%
     left_join(hypothermia_start, by = "millennium.id") %>%
@@ -205,15 +212,15 @@ data_wt_avg <- hep_join %>%
     full_join(temp_join, by = "millennium.id")
 
 # save final data --------------------------------------
-s3saveRDS(data_wt_avg, "data/final/data_wt_avg.Rds", bucket)
-s3saveRDS(temp_hep, "data/final/temp_hep.Rds", bucket)
-s3saveRDS(ptt_hep, "data/final/ptt_hep.Rds", bucket)
-s3saveRDS(temp_ptt, "data/final/temp_ptt.Rds", bucket)
-s3saveRDS(temp_ptt_full, "data/final/temp_ptt_full.Rds", bucket)
-s3saveRDS(hep_run, "data/final/hep_run.Rds", bucket)
-s3saveRDS(ptt_run, "data/final/ptt_run.Rds", bucket)
-s3saveRDS(hep_bolus_initiation, "data/final/hep_bolus_initiation.Rds", bucket)
-s3saveRDS(hep_protocol, "data/final/hep_protocol.Rds", bucket)
-s3saveRDS(hep_drip, "data/final/hep_drip.Rds", bucket)
-s3saveRDS(hep_bolus_initial, "data/final/hep_bolus_initial.Rds", bucket)
-s3saveRDS(hep_bolus_prn, "data/final/hep_bolus_prn.Rds", bucket)
+write_rds(data_wt_avg, "data/final/data_wt_avg.Rds", "gz")
+write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
+write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
+write_rds(temp_ptt, "data/final/temp_ptt.Rds", "gz")
+write_rds(temp_ptt_full, "data/final/temp_ptt_full.Rds", "gz")
+write_rds(hep_run, "data/final/hep_run.Rds", "gz")
+write_rds(ptt_run, "data/final/ptt_run.Rds", "gz")
+write_rds(hep_bolus_initiation, "data/final/hep_bolus_initiation.Rds", "gz")
+write_rds(hep_protocol, "data/final/hep_protocol.Rds", "gz")
+write_rds(hep_drip, "data/final/hep_drip.Rds", "gz")
+write_rds(hep_bolus_initial, "data/final/hep_bolus_initial.Rds", "gz")
+write_rds(hep_bolus_prn, "data/final/hep_bolus_prn.Rds", "gz")
