@@ -3,14 +3,6 @@ library(purrrlyr)
 library(readxl)
 library(stringr)
 library(MESS)
-library(aws.s3)
-
-bucket <- "heparin-scd"
-
-# prevent peer checking due to MH firewall
-if (.Platform$OS.type == "windows") {
-    httr::set_config(httr::config(ssl_verifypeer = 0L))
-}
 
 # chelsea's data ---------------------------------------
 
@@ -72,10 +64,10 @@ ck_data <- pts %>%
     fill(heparin, PTT, Temperature) %>%
     filter(Temperature < 40)
 
-s3saveRDS(ck_heparin, "data/final/ck_heparin.Rds", bucket)
-s3saveRDS(ck_ptt, "data/final/ck_ptt.Rds", bucket)
-s3saveRDS(ck_temp, "data/final/ck_temp.Rds", bucket)
-s3saveRDS(ck_data, "data/final/ck_data.Rds", bucket)
+write_rds(ck_heparin, "data/final/ck_heparin.Rds", "gz")
+write_rds(ck_ptt, "data/final/ck_ptt.Rds", "gz")
+write_rds(ck_temp, "data/final/ck_temp.Rds", "gz")
+write_rds(ck_data, "data/final/ck_data.Rds", "gz")
 
 # # <= 34; >34 <= 37; > 37
 # temp_df <- df %>%
