@@ -212,6 +212,7 @@ data_wt_avg <- hep_join %>%
     full_join(temp_join, by = "millennium.id")
 
 # save final data --------------------------------------
+write_rds(patients, "data/final/patients.Rds", "gz")
 write_rds(data_wt_avg, "data/final/data_wt_avg.Rds", "gz")
 write_rds(temp_hep, "data/final/temp_hep.Rds", "gz")
 write_rds(ptt_hep, "data/final/ptt_hep.Rds", "gz")
