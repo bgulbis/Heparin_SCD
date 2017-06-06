@@ -20,21 +20,12 @@ library(forcats)
 library(themebg)
 library(plotly)
 library(broom)
-library(aws.s3)
 
-# prevent peer checking due to MH firewall
-if (.Platform$OS.type == "windows") {
-    httr::set_config(httr::config(ssl_verifypeer = 0L))
-}
-
-# x <- dirr::get_rds("../data/final")
-bucket <- "heparin-scd"
-
-hep_bolus_initiation <- s3readRDS("data/final/hep_bolus_initiation.Rds", bucket)
-hep_bolus_initial <- s3readRDS("data/final/hep_bolus_initial.Rds", bucket)
-hep_bolus_prn <- s3readRDS("data/final/hep_bolus_prn.Rds", bucket)
-hep_drip <- s3readRDS("data/final/hep_drip.Rds", bucket)
-hep_run <- s3readRDS("data/final/hep_run.Rds", bucket)
+hep_bolus_initiation <- read_rds("../data/final/hep_bolus_initiation.Rds")
+hep_bolus_initial <- read_rds("../data/final/hep_bolus_initial.Rds")
+hep_bolus_prn <- read_rds("../data/final/hep_bolus_prn.Rds")
+hep_drip <- read_rds("../data/final/hep_drip.Rds")
+hep_run <- read_rds("../data/final/hep_run.Rds")
 
 se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
 se_fill <- 'rgba(7, 164, 181, 0.2)'

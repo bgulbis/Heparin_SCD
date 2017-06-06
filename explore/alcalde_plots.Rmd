@@ -19,32 +19,8 @@ library(lubridate)
 library(themebg)
 library(plotly)
 library(broom)
-library(aws.s3)
 
-# x <- dirr::get_rds("../data/final")
-# data_wt_avg <- read_rds("../data/final/data_wt_avg.rds")
-
-# prevent peer checking due to MH firewall
-if (.Platform$OS.type == "windows") {
-    httr::set_config(httr::config(ssl_verifypeer = 0L))
-}
-
-bucket <- "heparin-scd"
-
-hep_bolus_initiation <- s3readRDS("data/final/hep_bolus_initiation.Rds", bucket)
-ptt_run <- s3readRDS("data/final/ptt_run.Rds", bucket)
-hep_run <- s3readRDS("data/final/hep_run.Rds", bucket)
-data_wt_avg <- s3readRDS("data/final/data_wt_avg.Rds", bucket)
-patients <- s3readRDS("data/final/patients.Rds", bucket)
-temp_ptt_full <- s3readRDS("data/final/temp_ptt_full.Rds", bucket)
-temp_ptt <- s3readRDS("data/final/temp_ptt.Rds", bucket)
-hep_protocol <- s3readRDS("data/final/hep_protocol.Rds", bucket)
-hep_drip <- s3readRDS("data/final/hep_drip.Rds", bucket)
-
-ck_heparin <- s3readRDS("data/final/ck_heparin.Rds", bucket)
-ck_ptt <- s3readRDS("data/final/ck_ptt.Rds", bucket)
-ck_temp <- s3readRDS("data/final/ck_temp.Rds", bucket)
-ck_data <- s3readRDS("data/final/ck_data.Rds", bucket)
+x <- dirr::get_rds("../data/final")
 
 se_line <- list(color = 'rgba(7, 164, 181, 0.05)')
 se_fill <- 'rgba(7, 164, 181, 0.2)'
@@ -52,7 +28,6 @@ se_fill <- 'rgba(7, 164, 181, 0.2)'
 bolus <- hep_bolus_initiation %>%
     distinct(millennium.id) %>%
     mutate(bolus = TRUE)
-
 ```
 
 ```{r}
