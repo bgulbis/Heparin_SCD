@@ -1,7 +1,6 @@
 library(tidyverse)
 library(readxl)
 library(edwr)
-library(digest)
 
 dir_raw <- "data/raw"
 
@@ -21,10 +20,7 @@ id <- read_data(dir_raw, "identifiers") %>%
     as.id() %>%
     left_join(fins, by = c("fin" = "FIN")) %>%
     select(-X1, -X2) %>%
-    rename(study_id = Patient, group = Control) %>%
-    group_by(millennium.id) %>%
-    mutate(millennium_md5 = digest(millennium.id, serialize = FALSE)) %>%
-    ungroup()
+    rename(study_id = Patient, group = Control)
 
 write_rds(id, "data/tidy/identifiers.Rds", "gz")
 
@@ -44,5 +40,3 @@ mbo_id <- concat_encounters(id$millennium.id)
 #       - Clinical Event: Heparin Dosing Weight (kg)
 #   * Orders - Prompt
 #       - Order Catalog Mnemonic: CDM Hypothermia for Cardiac Arrest-Cold Phase
-
-# patients <- select(id, millennium.id, pie.id, millennium_md5, study_id, group)
