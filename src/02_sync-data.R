@@ -30,26 +30,29 @@ md5_id <- function(df) {
 
 meds_inpt <- read_data(dir_raw, "meds-inpt", FALSE) %>%
     as.meds_inpt() %>%
-    md5_id()
+    md5_id() %>%
+    select(-(order.id:event.id))
 
 temp <- read_data(dir_raw, "mbo_vitals", FALSE) %>%
     as.vitals() %>%
-    md5_id()
+    md5_id() %>%
+    select(-vital.id, -vital.parent.id)
 
 ptt <- read_data(dir_raw, "mbo_labs", FALSE) %>%
     as.labs() %>%
-    md5_id()
+    md5_id() %>%
+    select(-lab.id)
 
 # edw data ---------------------------------------------
 
 mpp <- read_data(dir_raw, "mpp") %>%
     as.order_by() %>%
-    left_join(patients[c("millennium.id", "group", "pie.id")], by = "pie.id") %>%
-    select(millennium.id, group, everything(), -pie.id)
+    left_join(identifiers[c("millennium.id", "group", "pie.id")], by = "pie.id") %>%
+    select(millennium.id, group, everything(), -pie.id, -provider, -action.provider)
 
 weights_hep <- read_data(dir_raw, "weights") %>%
     as.events() %>%
-    left_join(patients[c("millennium.id", "group", "pie.id")], by = "pie.id") %>%
+    left_join(identifiers[c("millennium.id", "group", "pie.id")], by = "pie.id") %>%
     select(millennium.id, group, everything(), -pie.id)
 
 # sync data --------------------------------------------
